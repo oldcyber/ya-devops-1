@@ -35,7 +35,10 @@ func Test_storeData1(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got, err := storeData(tt.args.res); !reflect.DeepEqual(got, tt.want) || !reflect.DeepEqual(err, tt.wantErr) {
+			if got, err := storeData(tt.args.res); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("storeData() = %v, want %v, err = %v", got, tt.want, err)
+			}
+			if got, err := storeData(tt.args.res); !reflect.DeepEqual(err, tt.wantErr) {
 				t.Errorf("storeData() = %v, want %v, err = %v", got, tt.want, err)
 			}
 		})
