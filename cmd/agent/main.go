@@ -1,7 +1,9 @@
 package main
 
-import "ya-devops-1/internal"
+import (
+	"ya-devops-1/internal/agent"
+)
 
 func main() {
-	internal.StoreMetrics()
+	agent.WorkWithMetrics()
 }
