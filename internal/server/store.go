@@ -1,13 +1,11 @@
 package server
 
 import (
+	"log"
 	"strconv"
 )
 
-var (
-	StoredData map[string]StoredType
-	counter    = 0
-)
+var StoredData map[string]StoredType // counter    = 0
 
 type StoredType struct {
 	gauge   float64
@@ -16,6 +14,7 @@ type StoredType struct {
 
 // storeData - хранит данные вида [string]gauge
 func storeData(res []string) (bool, int) {
+	log.Println("type:", res[0], "name:", res[1], "value:", res[2])
 	if len(res) < 3 {
 		return false, 404
 	}
@@ -28,13 +27,13 @@ func storeData(res []string) (bool, int) {
 	if res[0] == "gauge" {
 		g, err := strconv.ParseFloat(res[2], 64)
 		if err != nil {
-			return false, 501
+			return false, 400
 		}
 		StoredData[res[1]] = StoredType{gauge: g}
 	} else if res[0] == "counter" {
 		c, err := strconv.ParseInt(res[2], 10, 64)
 		if err != nil {
-			return false, 501
+			return false, 400
 		}
 		StoredData[res[1]] = StoredType{counter: c}
 	}
