@@ -4,65 +4,70 @@ import (
 	"testing"
 )
 
-func Test_storeData(t *testing.T) {
+func Test_storeData1(t *testing.T) {
 	type args struct {
 		res []string
 	}
-
-	type Data struct {
-		Mtype string
-		Name  string
-		Val   storedType
+	type Want struct {
+		err bool
+		an  int
 	}
-	type want struct {
-		Data Data
-		ok   bool
-	}
-
 	tests := []struct {
 		name string
 		args args
-		want want
+		want Want
 	}{
 		{
-			name: "simple test",
+			name: "simple test 1",
 			args: args{
 				res: []string{"gauge", "Alloc", "100"},
 			},
-			want: want{
-				Data: Data{
-					Mtype: "gauge",
-					Name:  "Alloc",
-					Val:   storedType{gauge: 100},
-				},
-				ok: true,
+			want: Want{
+				err: true,
+				an:  200,
 			},
 		},
 		{
-			name: "not simple test",
+			name: "simple tes 2",
 			args: args{
-				res: []string{"gauge", "Alloc", "100", "вентилятор"},
+				res: []string{"gauge", "Test", "100"},
 			},
-			want: want{
-				Data: Data{
-					Mtype: "gauge",
-					Name:  "Alloc",
-					Val:   storedType{gauge: 100},
-				},
-				ok: false,
+			want: Want{
+				err: true,
+				an:  200,
+			},
+		},
+		{
+			name: "error tes 1",
+			args: args{
+				res: []string{"gauge", "Test", "none"},
+			},
+			want: Want{
+				err: false,
+				an:  400,
+			},
+		},
+		{
+			name: "error tes 2",
+			args: args{
+				res: []string{"gauger", "Test", "none"},
+			},
+			want: Want{
+				err: false,
+				an:  501,
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			StoredData = make(map[int]*SData)
-			_, ok := storeData(tt.args.res)
-			//if !reflect.DeepEqual(got[0], tt.want.Data) {
-			// t.Errorf("storeData() got = %v, want %v", got[0], tt.want.Data)
-			//}
-			if ok != tt.want.ok {
-				t.Errorf("storeData() ok = %v, want %v", ok, tt.want.ok)
+			StoredData = make(map[string]StoredType)
+			got, got1 := storeData(tt.args.res)
+			if (got != tt.want.err) || (got1 != tt.want.an) {
+				t.Errorf("storeData() = %v, %v, want %v, %v", got, got1, tt.want.err, tt.want.an)
 			}
+			//if got, err := storeData(tt.args.res); !reflect.DeepEqual(got, tt.want) {
+			//	t.Errorf("storeData() = %v, want %v, err = %v", got, tt.want, err)
+			//}
 		})
 	}
 }

@@ -29,7 +29,7 @@ func TestGetURL(t *testing.T) {
 				url: "/update/gauge/1234345",
 				h:   "update",
 			},
-			want: []string{"gauge", "1234345"},
+			want: nil,
 		},
 		{
 			name: "Short URL string without update",
@@ -46,6 +46,14 @@ func TestGetURL(t *testing.T) {
 				h:   "update",
 			},
 			want: []string{"v1", "update", "gauge", "Alloc", "1234345"},
+		},
+		{
+			name: "Simple URL string value",
+			args: args{
+				url: "/value/Alloc/1234345",
+				h:   "value",
+			},
+			want: []string{"Alloc", "1234345"},
 		},
 	}
 

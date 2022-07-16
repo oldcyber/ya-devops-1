@@ -14,9 +14,15 @@ func GetURL(url string, h string) []string {
 	//	Парсим URL
 	if h == "update" {
 		urlPath := strings.Split(strings.TrimLeft(url, "update/"), "/")
+		if len(urlPath) < 3 {
+			return nil
+		}
 		return urlPath
 	} else if h == "value" {
 		urlPath := strings.Split(strings.TrimLeft(url, "value/"), "/")
+		if len(urlPath) < 2 {
+			return nil
+		}
 		return urlPath
 	}
 	return nil
