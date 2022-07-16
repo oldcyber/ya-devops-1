@@ -33,6 +33,14 @@ func TestGetMetrics(t *testing.T) {
 			},
 		},
 		{
+			name:    "negative test #3",
+			request: "counter/",
+			want: want{
+				code:        404,
+				contentType: "text/plain",
+			},
+		},
+		{
 			name:    "positive test #1",
 			request: "counter/testCounter/100",
 			want: want{
@@ -51,6 +59,7 @@ func TestGetMetrics(t *testing.T) {
 			h := http.HandlerFunc(GetMetrics)
 			h.ServeHTTP(w, request)
 			res := w.Result()
+			defer res.Body.Close()
 			if res.StatusCode != tt.want.code {
 				t.Errorf("Expected status code %d, got %d", tt.want.code, w.Code)
 			}

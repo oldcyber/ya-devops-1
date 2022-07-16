@@ -26,7 +26,7 @@ func TestGetURL(t *testing.T) {
 			args: args{
 				url: "/update/gauge/1234345",
 			},
-			want: []string{"gauge", "1234345"},
+			want: nil,
 		},
 		{
 			name: "Short URL string without update",

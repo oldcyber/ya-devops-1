@@ -21,6 +21,10 @@ import (
 func GetMetrics(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 	res := tools.GetURL(r.URL.Path)
+	if res == nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
 	er, an := storeData(res)
 	if !er {
 		w.WriteHeader(an)

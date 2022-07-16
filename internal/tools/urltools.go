@@ -13,5 +13,8 @@ func SetURL(k, v, t string) string {
 func GetURL(url string) []string {
 	//	Парсим URL
 	urlPath := strings.Split(strings.TrimLeft(url, "update/"), "/")
+	if len(urlPath) < 3 {
+		return nil
+	}
 	return urlPath
 }
