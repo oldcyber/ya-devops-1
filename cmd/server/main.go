@@ -8,6 +8,7 @@ import (
 )
 
 func main() {
+	server.StoredData = make(map[string]server.StoredType)
 	http.HandleFunc("/", server.GetRoot)
 	http.HandleFunc("/update/", server.GetMetrics)
 

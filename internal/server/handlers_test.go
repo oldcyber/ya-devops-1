@@ -31,7 +31,7 @@ func TestGetMetrics(t *testing.T) {
 			name:    "negative test #1",
 			request: "test/Alloc/",
 			want: want{
-				code:        400,
+				code:        501,
 				contentType: "text/plain",
 				response:    "Что-то пошло не так",
 			},

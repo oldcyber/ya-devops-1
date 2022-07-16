@@ -8,13 +8,6 @@ import (
 	"ya-devops-1/internal/tools"
 )
 
-var (
-	storedData map[string]gauge
-	counter    = 0
-)
-
-type gauge float64
-
 // GetRoot - обработчик запроса на главную страницу
 func GetRoot(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
@@ -29,21 +22,22 @@ func GetRoot(w http.ResponseWriter, _ *http.Request) {
 func GetMetrics(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 	res := tools.GetURL(r.URL.Path)
-	storedData = make(map[string]gauge)
+	er, an := storeData(res)
+	if !er {
+		w.WriteHeader(an)
+		return
+	}
+
 	switch res[0] {
 	case "gauge":
 		// Хранить последние полученные данные вида [название][значение] ([string]gauge)
-		_, err := storeData(res)
-		if err != nil {
-			w.WriteHeader(http.StatusOK)
-			_, err := w.Write([]byte("Я всё записал"))
-			if err != nil {
-				return
-			}
+		er, an := storeData(res)
+		if !er {
+			w.WriteHeader(an)
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		_, err = w.Write([]byte("Я всё записал"))
+		_, err := w.Write([]byte("Я всё записал"))
 		if err != nil {
 			return
 		}
@@ -61,13 +55,13 @@ func GetMetrics(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	default:
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(http.StatusNotImplemented)
 		_, err := w.Write([]byte("Что-то пошло не так"))
 		if err != nil {
 			return
 		}
 	}
-	for k, v := range storedData {
+	for k, v := range StoredData {
 		log.Println("key", k, "value", v)
 	}
 }
