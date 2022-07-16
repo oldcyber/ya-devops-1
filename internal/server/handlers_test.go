@@ -94,7 +94,7 @@ func TestGetRoot(t *testing.T) {
 			if res.StatusCode != tt.want.code {
 				t.Errorf("Expected status code %d, got %d", tt.want.code, w.Code)
 			}
-			//defer res.Body.Close()
+			defer res.Body.Close()
 			//resBody, err := io.ReadAll(res.Body)
 			//if err != nil {
 			//	t.Fatal(err)

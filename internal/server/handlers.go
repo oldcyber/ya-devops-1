@@ -30,9 +30,6 @@ func GetRoot(w http.ResponseWriter, _ *http.Request) {
 		if err != nil {
 			return
 		}
-		if err != nil {
-			return
-		}
 	}
 }
 
