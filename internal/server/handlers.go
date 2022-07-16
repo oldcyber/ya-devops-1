@@ -9,14 +9,14 @@ import (
 )
 
 // GetRoot - обработчик запроса на главную страницу
-func GetRoot(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("Content-Type", "text/plain")
-
-	_, err := w.Write([]byte("Hello, stranger!"))
-	if err != nil {
-		return
-	}
-}
+//func GetRoot(w http.ResponseWriter, _ *http.Request) {
+//	w.Header().Set("Content-Type", "text/plain")
+//
+//	_, err := w.Write([]byte("Hello, stranger!"))
+//	if err != nil {
+//		return
+//	}
+//}
 
 // GetMetrics читаем данные из URL и сохраняем
 func GetMetrics(w http.ResponseWriter, r *http.Request) {
