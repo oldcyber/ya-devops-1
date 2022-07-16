@@ -17,7 +17,7 @@ func sendGaugeMetrics(m map[string]gauge) {
 	// проходим по метрикам и отправляем их на сервер
 	for key, val := range m {
 		func() {
-			req, err := http.NewRequest(http.MethodPost, tools.SetURL(key, fmt.Sprintf("%v", val), "gauge"), nil)
+			req, err := http.NewRequest(http.MethodPost, tools.SetURL(key, strconv.FormatFloat(float64(val), 'f', -1, 64), "gauge"), nil)
 			if err != nil {
 				log.Fatalln(err)
 			}

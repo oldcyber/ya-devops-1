@@ -10,8 +10,14 @@ func SetURL(k, v, t string) string {
 	return endpoint + t + "/" + k + "/" + v
 }
 
-func GetURL(url string) []string {
+func GetURL(url string, h string) []string {
 	//	Парсим URL
-	urlPath := strings.Split(strings.TrimLeft(url, "update/"), "/")
-	return urlPath
+	if h == "update" {
+		urlPath := strings.Split(strings.TrimLeft(url, "update/"), "/")
+		return urlPath
+	} else if h == "value" {
+		urlPath := strings.Split(strings.TrimLeft(url, "value/"), "/")
+		return urlPath
+	}
+	return nil
 }

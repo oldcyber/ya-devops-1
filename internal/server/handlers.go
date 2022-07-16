@@ -1,73 +1,138 @@
 package server
 
 import (
-	"log"
 	"net/http"
 	"strconv"
 
 	"ya-devops-1/internal/tools"
 )
 
-var (
-	storedData map[string]gauge
-	counter    = 0
-)
-
-type gauge float64
-
-// GetRoot - обработчик запроса на главную страницу
+// GetRoot сервер должен отдавать HTML-страничку со списком имён и значений всех известных ему на текущий момент метрик.
 func GetRoot(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
-
-	_, err := w.Write([]byte("Hello, stranger!"))
-	if err != nil {
-		return
-	}
-}
-
-// GetMetrics читаем данные из URL и сохраняем
-func GetMetrics(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/plain")
-	res := tools.GetURL(r.URL.Path)
-	storedData = make(map[string]gauge)
-	switch res[0] {
-	case "gauge":
-		// Хранить последние полученные данные вида [название][значение] ([string]gauge)
-		_, err := storeData(res)
-		if err != nil {
-			w.WriteHeader(http.StatusOK)
-			_, err := w.Write([]byte("Я всё записал"))
+	sd := StoredData
+	if len(sd) != 0 {
+		var value string
+		for k := range sd {
+			if sd[k].Mtype == "gauge" {
+				value = strconv.FormatFloat(sd[k].Val.gauge, 'f', -1, 64)
+			} else {
+				value = strconv.FormatInt(sd[k].Val.counter, 10)
+			}
+			kvw := "type: " + sd[k].Mtype + " name: " + sd[k].Name + " value: " + value + "\n"
+			_, err := w.Write([]byte(kvw))
 			if err != nil {
 				return
 			}
-			return
 		}
-		w.WriteHeader(http.StatusOK)
-		_, err = w.Write([]byte("Я всё записал"))
+	} else {
+		_, err := w.Write([]byte("Нет данных"))
 		if err != nil {
 			return
 		}
+		if err != nil {
+			return
+		}
+	}
+}
 
-	case "counter":
-		// Прибавлять значение счётчика к предыдущему
-		c, err := strconv.Atoi(res[2])
-		if err != nil {
-			log.Println(err)
-		}
-		counter = counter + c
-		w.WriteHeader(http.StatusOK)
-		_, err = w.Write([]byte("Я всё записал"))
-		if err != nil {
-			return
-		}
-	default:
+// PostMetrics читаем данные из URL и сохраняем
+func PostMetrics(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/plain")
+	res := tools.GetURL(r.URL.Path, "update")
+
+	data, answer := storeData(res)
+	if !answer {
 		w.WriteHeader(http.StatusBadRequest)
 		_, err := w.Write([]byte("Что-то пошло не так"))
 		if err != nil {
 			return
 		}
+		return
 	}
-	for k, v := range storedData {
-		log.Println("key", k, "value", v)
+	StoredData = data
+	w.WriteHeader(http.StatusOK)
+	_, err := w.Write([]byte("Я всё записал"))
+	if err != nil {
+		return
 	}
+}
+
+// GetValue должен возвращать текущее значение запрашиваемой метрики
+// в текстовом виде по запросу GET
+// http://<АДРЕС_СЕРВЕРА>/value/<ТИП_МЕТРИКИ>/<ИМЯ_МЕТРИКИ>
+func GetValue(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/plain")
+	res := tools.GetURL(r.URL.Path, "value")
+	metrics := []string{
+		"Alloc",
+		"BuckHashSys",
+		"Frees",
+		"GCCPUFraction",
+		"GCSys",
+		"HeapAlloc",
+		"HeapIdle",
+		"HeapInuse",
+		"HeapObjects",
+		"HeapReleased",
+		"HeapSys",
+		"LastGC",
+		"Lookups",
+		"MCacheInuse",
+		"MCacheSys",
+		"Mallocs",
+		"NextGC",
+		"NumForcedGC",
+		"NumGC",
+		"OtherSys",
+		"PauseTotalNs",
+		"StackInuse",
+		"StackSys",
+		"Sys",
+		"TotalAlloc",
+		"RandomValue",
+	}
+	typeM := res[0]
+	nameM := res[1]
+
+	if !contains(metrics, nameM) {
+		w.WriteHeader(http.StatusNotFound)
+		_, err := w.Write([]byte("Нет такой метрики"))
+		if err != nil {
+			return
+		}
+		return
+	} else if typeM != "gauge" && typeM != "counter" {
+		w.WriteHeader(http.StatusNotFound)
+		_, err := w.Write([]byte("Нет такого типа метрики"))
+		if err != nil {
+			return
+		}
+		return
+	} else {
+		sd := StoredData
+		var value string
+		for k := range sd {
+			if sd[k].Name == nameM && sd[k].Mtype == typeM {
+				if typeM == "gauge" {
+					value = strconv.FormatFloat(sd[k].Val.gauge, 'f', -1, 64)
+				} else {
+					value = strconv.FormatInt(sd[k].Val.counter, 10)
+				}
+				_, err := w.Write([]byte(value))
+				if err != nil {
+					return
+				}
+			}
+		}
+	}
+}
+
+func contains(elems []string, v string) bool {
+	for _, s := range elems {
+		if v == s {
+			return true
+		}
+	}
+	return false
 }

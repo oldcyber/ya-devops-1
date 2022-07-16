@@ -8,6 +8,7 @@ import (
 func TestGetURL(t *testing.T) {
 	type args struct {
 		url string
+		h   string
 	}
 	tests := []struct {
 		name string
@@ -18,6 +19,7 @@ func TestGetURL(t *testing.T) {
 			name: "Simple URL string",
 			args: args{
 				url: "/update/gauge/Alloc/1234345",
+				h:   "update",
 			},
 			want: []string{"gauge", "Alloc", "1234345"},
 		},
@@ -25,6 +27,7 @@ func TestGetURL(t *testing.T) {
 			name: "short URL string without one argument",
 			args: args{
 				url: "/update/gauge/1234345",
+				h:   "update",
 			},
 			want: []string{"gauge", "1234345"},
 		},
@@ -32,6 +35,7 @@ func TestGetURL(t *testing.T) {
 			name: "Short URL string without update",
 			args: args{
 				url: "gauge/Alloc/1234345",
+				h:   "update",
 			},
 			want: []string{"gauge", "Alloc", "1234345"},
 		},
@@ -39,6 +43,7 @@ func TestGetURL(t *testing.T) {
 			name: "wrong long URL string",
 			args: args{
 				url: "/v1/update/gauge/Alloc/1234345",
+				h:   "update",
 			},
 			want: []string{"v1", "update", "gauge", "Alloc", "1234345"},
 		},
@@ -46,7 +51,7 @@ func TestGetURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := GetURL(tt.args.url); !reflect.DeepEqual(got, tt.want) {
+			if got := GetURL(tt.args.url, tt.args.h); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("GetURL() = %v, want %v", got, tt.want)
 			}
 		})
