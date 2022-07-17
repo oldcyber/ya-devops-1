@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/go-chi/chi/v5"
 )
 
 func TestGetMetrics(t *testing.T) {
@@ -37,7 +39,7 @@ func TestGetMetrics(t *testing.T) {
 			request: "counter/",
 			want: want{
 				code:        404,
-				contentType: "text/plain",
+				contentType: "text/plain; charset=utf-8",
 			},
 		},
 		{
@@ -53,11 +55,15 @@ func TestGetMetrics(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			StoredData = make(map[string]StoredType)
 			target := "/update/" + tt.request
+			w := httptest.NewRecorder()
 			request := httptest.NewRequest(http.MethodPost, target, nil)
 			request.Header.Set("Content-Type", "text/plain")
-			w := httptest.NewRecorder()
-			h := http.HandlerFunc(GetMetrics)
-			h.ServeHTTP(w, request)
+
+			r := chi.NewRouter()
+			r.Post("/update/{type}/{name}/{value}", GetMetrics)
+
+			// h := http.HandlerFunc(GetMetrics)
+			r.ServeHTTP(w, request)
 			res := w.Result()
 			defer res.Body.Close()
 			if res.StatusCode != tt.want.code {

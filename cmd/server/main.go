@@ -1,17 +1,26 @@
 package main
 
 import (
-	"log"
 	"net/http"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 
 	"ya-devops-1/internal/server"
 )
 
 func main() {
 	server.StoredData = make(map[string]server.StoredType)
-	http.HandleFunc("/", server.GetRoot)           // метод GET
-	http.HandleFunc("/update/", server.GetMetrics) // метод POST
-	http.HandleFunc("/value/", server.GetValue)    // метод GET
 
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	r := chi.NewRouter()
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
+	r.Get("/", server.GetRoot)
+	r.Post("/update/{type}/{name}/{value}", server.GetMetrics)
+	r.Get("/value/{type}/{name}", server.GetValue)
+
+	err := http.ListenAndServe(":8080", r)
+	if err != nil {
+		return
+	}
 }

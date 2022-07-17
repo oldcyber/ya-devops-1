@@ -1,11 +1,10 @@
 package server
 
 import (
-	"log"
 	"net/http"
 	"strconv"
 
-	"ya-devops-1/internal/tools"
+	"github.com/go-chi/chi/v5"
 )
 
 // GetRoot сервер должен отдавать HTML-страничку со списком имён и значений всех известных ему на текущий момент метрик.
@@ -29,7 +28,11 @@ func GetRoot(w http.ResponseWriter, _ *http.Request) {
 // GetMetrics читаем данные из URL и сохраняем
 func GetMetrics(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
-	res := tools.GetURL(r.URL.Path, "update")
+	var res []string
+	res = append(res, chi.URLParam(r, "type"))
+	res = append(res, chi.URLParam(r, "name"))
+	res = append(res, chi.URLParam(r, "value"))
+
 	if res == nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
@@ -42,9 +45,9 @@ func GetMetrics(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(200)
 	}
 
-	for k, v := range StoredData {
-		log.Println("key", k, "value", v)
-	}
+	//for k, v := range StoredData {
+	//	log.Println("key", k, "value", v)
+	//}
 }
 
 // GetValue должен возвращать текущее значение запрашиваемой метрики
@@ -52,9 +55,9 @@ func GetMetrics(w http.ResponseWriter, r *http.Request) {
 // http://<АДРЕС_СЕРВЕРА>/value/<ТИП_МЕТРИКИ>/<ИМЯ_МЕТРИКИ>
 func GetValue(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
-	res := tools.GetURL(r.URL.Path, "value")
-	typeM := res[0]
-	nameM := res[1]
+
+	typeM := chi.URLParam(r, "type")
+	nameM := chi.URLParam(r, "name")
 
 	if typeM != "gauge" && typeM != "counter" {
 		w.WriteHeader(http.StatusNotFound)
