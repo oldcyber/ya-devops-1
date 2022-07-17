@@ -84,6 +84,7 @@ func GetValue(w http.ResponseWriter, r *http.Request) {
 					if err != nil {
 						return
 					}
+					return
 				} else if sd[i].counter != 0 {
 					value := strconv.FormatInt(sd[i].counter, 10)
 					_, err := w.Write([]byte(value))
@@ -91,14 +92,7 @@ func GetValue(w http.ResponseWriter, r *http.Request) {
 						return
 					}
 				}
-				//} else {
-				//	value := "HZ"
-				//
-				//	_, err := w.Write([]byte(value))
-				//	if err != nil {
-				//		return
-				//	}
-				//}
+				return
 			} else {
 				w.WriteHeader(http.StatusNotFound)
 				_, err := w.Write([]byte("Нет такой метрики"))

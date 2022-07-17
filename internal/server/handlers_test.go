@@ -1,6 +1,7 @@
 package server
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -62,7 +63,6 @@ func TestGetMetrics(t *testing.T) {
 			r := chi.NewRouter()
 			r.Post("/update/{type}/{name}/{value}", GetMetrics)
 
-			// h := http.HandlerFunc(GetMetrics)
 			r.ServeHTTP(w, request)
 			res := w.Result()
 			defer res.Body.Close()
@@ -119,3 +119,68 @@ func TestGetMetrics(t *testing.T) {
 //		})
 //	}
 //}
+
+func TestGetValue(t *testing.T) {
+	type args struct {
+		// w http.ResponseWriter
+		r *http.Request
+	}
+	type post struct {
+		data []string
+	}
+
+	type want struct {
+		code     int
+		response string
+	}
+	tests := []struct {
+		name string
+		post post
+		args args
+		want want
+	}{
+		{
+			name: "positive test #1",
+			post: post{
+				data: []string{"counter", "testCounter", "100"},
+			},
+			args: args{
+				// w: httptest.NewRecorder(),
+				r: httptest.NewRequest(http.MethodGet, "/value/counter/testCounter", nil),
+			},
+			want: want{
+				code:     200,
+				response: "100",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+
+			// request := httptest.NewRequest(http.MethodPost, "http://localhost:8080/"+tt.post, nil)
+			// request.Header.Set("Content-Type", "text/plain")
+
+			r := chi.NewRouter()
+			r.Get("/value/{type}/{name}", GetValue)
+			r.ServeHTTP(w, tt.args.r)
+			StoredData = make(map[string]StoredType)
+			er, an := storeData(tt.post.data)
+			if !er {
+				w.WriteHeader(an)
+				return
+			} else {
+				w.WriteHeader(200)
+			}
+			res := w.Result()
+			defer res.Body.Close()
+			resBody, _ := io.ReadAll(res.Body)
+			if res.StatusCode != tt.want.code {
+				t.Errorf("Expected status code %d, got %d", tt.want.code, w.Code)
+			}
+			if string(resBody) != tt.want.response {
+				t.Errorf("Expected body %s, got %s stored %v", tt.want.response, string(resBody), StoredData)
+			}
+		})
+	}
+}
