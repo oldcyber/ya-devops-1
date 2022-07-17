@@ -67,6 +67,14 @@ func GetValue(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	} else {
+		if len(StoredData) == 0 {
+			w.WriteHeader(http.StatusNotFound)
+			_, err := w.Write([]byte("Нет метрик"))
+			if err != nil {
+				return
+			}
+			return
+		}
 		sd := StoredData
 		for i := range sd {
 			if i == nameM {
@@ -82,12 +90,20 @@ func GetValue(w http.ResponseWriter, r *http.Request) {
 					if err != nil {
 						return
 					}
-				} else {
-					value := "HZ"
-					_, err := w.Write([]byte(value))
-					if err != nil {
-						return
-					}
+				}
+				//} else {
+				//	value := "HZ"
+				//
+				//	_, err := w.Write([]byte(value))
+				//	if err != nil {
+				//		return
+				//	}
+				//}
+			} else {
+				w.WriteHeader(http.StatusNotFound)
+				_, err := w.Write([]byte("Нет такой метрики"))
+				if err != nil {
+					return
 				}
 			}
 		}
