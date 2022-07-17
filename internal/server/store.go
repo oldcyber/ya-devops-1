@@ -1,7 +1,6 @@
 package server
 
 import (
-	"log"
 	"strconv"
 )
 
@@ -14,7 +13,6 @@ type StoredType struct {
 
 // storeData - хранит данные вида [string]gauge
 func storeData(res []string) (bool, int) {
-	log.Println("type:", res[0], "name:", res[1], "value:", res[2])
 	if len(res) < 3 {
 		return false, 404
 	}
@@ -35,7 +33,8 @@ func storeData(res []string) (bool, int) {
 		if err != nil {
 			return false, 400
 		}
-		StoredData[res[1]] = StoredType{counter: c}
+		tCounter := StoredData[res[1]].counter
+		StoredData[res[1]] = StoredType{counter: tCounter + c}
 	}
 
 	return true, 200
