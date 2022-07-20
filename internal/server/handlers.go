@@ -75,31 +75,37 @@ func GetValue(w http.ResponseWriter, r *http.Request) {
 			}
 			return
 		}
-		sd := StoredData
-		for i := range sd {
-			if i == nameM {
-				if sd[i].gauge != 0 {
-					value := strconv.FormatFloat(sd[i].gauge, 'f', -1, 64)
-					_, err := w.Write([]byte(value))
-					if err != nil {
-						return
-					}
-					return
-				} else if sd[i].counter != 0 {
-					value := strconv.FormatInt(sd[i].counter, 10)
-					_, err := w.Write([]byte(value))
-					if err != nil {
-						return
-					}
-				}
+		if !findMetric(nameM) {
+			w.WriteHeader(http.StatusNotFound)
+			_, err := w.Write([]byte("Нет такой метрики"))
+			if err != nil {
 				return
-			} else {
-				w.WriteHeader(http.StatusNotFound)
-				_, err := w.Write([]byte("Нет такой метрики"))
-				if err != nil {
-					return
-				}
 			}
+			return
+		}
+		if StoredData[nameM].gauge != 0 {
+			value := strconv.FormatFloat(StoredData[nameM].gauge, 'f', -1, 64)
+			_, err := w.Write([]byte(value))
+			if err != nil {
+				return
+			}
+			return
+		} else if StoredData[nameM].counter != 0 {
+			value := strconv.FormatInt(StoredData[nameM].counter, 10)
+			_, err := w.Write([]byte(value))
+			if err != nil {
+				return
+			}
+
 		}
 	}
+}
+
+func findMetric(name string) bool {
+	for i := range StoredData {
+		if i == name {
+			return true
+		}
+	}
+	return false
 }
