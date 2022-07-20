@@ -1,5 +1,5 @@
 SERVER_NAME="server"
-CLIENT_NAME="client"
+CLIENT_NAME="agent"
 
 # .PHONY: build
 .PHONY: all dep build clean test coverage coverhtml lint
@@ -20,11 +20,11 @@ dep: ## Get the dependencies
 	@go get -v -d ./...
 
 build: ## Build the binary file for Intel and ARM architecture
-	GOARCH=arm64 GOOS=darwin go build -o ${SERVER_NAME}-darwin -v ./cmd/server
-	GOARCH=amd64 GOOS=linux go build -o ${SERVER_NAME} -v ./cmd/server
+	GOARCH=arm64 GOOS=darwin go build -o ${SERVER_NAME} -v ./cmd/server
+	## GOARCH=amd64 GOOS=linux go build -o ${SERVER_NAME} -v ./cmd/server
 
-	GOARCH=arm64 GOOS=darwin go build -o ${CLIENT_NAME}-darwin -v ./cmd/agent
-	GOARCH=amd64 GOOS=linux go build -o ${CLIENT_NAME} -v ./cmd/agent
+	GOARCH=arm64 GOOS=darwin go build -o ${CLIENT_NAME} -v ./cmd/agent
+	## GOARCH=amd64 GOOS=linux go build -o ${CLIENT_NAME} -v ./cmd/agent
 
 clean: ## Remove previous build
 	@rm -f $(SERVER_NAME)

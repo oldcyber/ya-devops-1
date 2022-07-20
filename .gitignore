@@ -28,3 +28,5 @@ vendor/
 .idea
 .vscode
 /main
+/bin
+.DS_Store
