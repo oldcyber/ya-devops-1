@@ -11,13 +11,14 @@ import (
 )
 
 // sendGaugeMetrics отправляет данные типа gauge в сервис метрик
-func sendGaugeMetrics(m map[string]gauge) {
+
+func sendGaugeMetrics(m map[string]float64) {
 	//	Инициализируем клиента
 	client := &http.Client{}
 	// проходим по метрикам и отправляем их на сервер
 	for key, val := range m {
 		func() {
-			req, err := http.NewRequest(http.MethodPost, tools.SetURL(key, strconv.FormatFloat(float64(val), 'f', -1, 64), "gauge"), nil)
+			req, err := http.NewRequest(http.MethodPost, tools.SetURL(key, strconv.FormatFloat(val, 'f', -1, 64), "gauge"), nil)
 			if err != nil {
 				log.Fatalln(err)
 			}
@@ -34,7 +35,7 @@ func sendGaugeMetrics(m map[string]gauge) {
 }
 
 // sendCounterMetrics отправляет данные типа counter в сервис метрик
-func sendCounterMetrics(c counter) {
+func sendCounterMetrics(c int64) {
 	//	Инициализируем клиента
 	client := &http.Client{}
 	func() {
