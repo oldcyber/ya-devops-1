@@ -28,3 +28,4 @@ vendor/
 .idea
 .vscode
 /main
+/bin
