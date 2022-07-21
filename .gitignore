@@ -29,3 +29,4 @@ vendor/
 .vscode
 /main
 /bin
+.DS_Store
