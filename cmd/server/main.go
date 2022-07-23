@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -10,8 +11,6 @@ import (
 )
 
 func main() {
-	server.StoredData = make(map[string]server.StoredType)
-
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
@@ -19,8 +18,5 @@ func main() {
 	r.Post("/update/{type}/{name}/{value}", server.GetMetrics)
 	r.Get("/value/{type}/{name}", server.GetValue)
 
-	err := http.ListenAndServe(":8080", r)
-	if err != nil {
-		return
-	}
+	log.Fatal(http.ListenAndServe(":8080", r))
 }
