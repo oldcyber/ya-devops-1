@@ -18,11 +18,11 @@ func sendGaugeMetrics(m map[string]float64) {
 	// проходим по метрикам и отправляем их на сервер
 	for key, val := range m {
 		func() {
-			req, err := http.NewRequest(http.MethodPost, tools.SetJSONURL(key, strconv.FormatFloat(val, 'f', -1, 64), "gauge"), nil)
+			req, err := http.NewRequest(http.MethodPost, tools.SetURL(key, strconv.FormatFloat(val, 'f', -1, 64), "gauge"), nil)
 			if err != nil {
 				log.Fatalln(err)
 			}
-			req.Header.Add("Content-Type", "application/json")
+			req.Header.Add("Content-Type", "text/plain")
 			resp, err := client.Do(req)
 			if err != nil {
 				fmt.Println(err)
@@ -39,11 +39,11 @@ func sendCounterMetrics(c int64) {
 	//	Инициализируем клиента
 	client := &http.Client{}
 	func() {
-		req, err := http.NewRequest(http.MethodPost, tools.SetJSONURL("PollCount", strconv.FormatInt(int64(c), 10), "counter"), nil)
+		req, err := http.NewRequest(http.MethodPost, tools.SetURL("PollCount", strconv.FormatInt(int64(c), 10), "counter"), nil)
 		if err != nil {
 			log.Fatalln(err)
 		}
-		req.Header.Add("Content-Type", "application/json")
+		req.Header.Add("Content-Type", "text/plain")
 		resp, err := client.Do(req)
 		if err != nil {
 			fmt.Println(err)

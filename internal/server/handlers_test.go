@@ -5,9 +5,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"ya-devops-1/internal/data"
-
 	"github.com/go-chi/chi/v5"
+
+	"ya-devops-1/internal/data"
 )
 
 func TestGetMetrics(t *testing.T) {
@@ -53,11 +53,13 @@ func TestGetMetrics(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_ = data.NewstoredData()
 			target := "/update/" + tt.request
 			w := httptest.NewRecorder()
+
 			request := httptest.NewRequest(http.MethodPost, target, nil)
 			request.Header.Set("Content-Type", "text/plain")
 
