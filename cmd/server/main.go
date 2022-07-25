@@ -1,8 +1,9 @@
 package main
 
 import (
-	"log"
 	"net/http"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -18,5 +19,5 @@ func main() {
 	r.Post("/update/{type}/{name}/{value}", server.GetMetrics)
 	r.Get("/value/{type}/{name}", server.GetValue)
 
-	log.Fatal(http.ListenAndServe(":8080", r))
+	log.Error(http.ListenAndServe(":8080", r))
 }
