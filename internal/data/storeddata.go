@@ -41,7 +41,7 @@ func (s *storedData) AddStoredData(res []string) (bool, int) {
 	if res[0] == "gauge" {
 		g, err := strconv.ParseFloat(res[2], 64)
 		if err != nil {
-			log.Println(err)
+			// log.Println(err)
 			return false, 400
 		}
 		s.data[res[1]] = StoredType{gauge: g}
@@ -50,7 +50,7 @@ func (s *storedData) AddStoredData(res []string) (bool, int) {
 	if res[0] == "counter" {
 		c, err := strconv.ParseInt(res[2], 10, 64)
 		if err != nil {
-			log.Println(err)
+			// log.Println(err)
 			return false, 400
 		}
 		tCounter := s.GetStoredData()
