@@ -38,7 +38,8 @@ func (s *storedData) AddStoredData(res []string) (bool, int) {
 		return false, 501
 	}
 
-	if res[0] == "gauge" {
+	switch res[0] {
+	case "gauge":
 		g, err := strconv.ParseFloat(res[2], 64)
 		if err != nil {
 			// log.Println(err)
@@ -46,8 +47,7 @@ func (s *storedData) AddStoredData(res []string) (bool, int) {
 		}
 		s.data[res[1]] = StoredType{gauge: g}
 		return true, 200
-	}
-	if res[0] == "counter" {
+	case "counter":
 		c, err := strconv.ParseInt(res[2], 10, 64)
 		if err != nil {
 			// log.Println(err)
@@ -57,8 +57,30 @@ func (s *storedData) AddStoredData(res []string) (bool, int) {
 		t, _ := strconv.ParseInt(tCounter[res[1]], 10, 64)
 		s.data[res[1]] = StoredType{counter: t + c}
 		return true, 200
+	default:
+		return false, 400
 	}
-	return true, 200
+	//if res[0] == "gauge" {
+	//	g, err := strconv.ParseFloat(res[2], 64)
+	//	if err != nil {
+	//		// log.Println(err)
+	//		return false, 400
+	//	}
+	//	s.data[res[1]] = StoredType{gauge: g}
+	//	return true, 200
+	//}
+	//if res[0] == "counter" {
+	//	c, err := strconv.ParseInt(res[2], 10, 64)
+	//	if err != nil {
+	//		// log.Println(err)
+	//		return false, 400
+	//	}
+	//	tCounter := s.GetStoredData()
+	//	t, _ := strconv.ParseInt(tCounter[res[1]], 10, 64)
+	//	s.data[res[1]] = StoredType{counter: t + c}
+	//	return true, 200
+	//}
+	//return true, 200
 }
 
 func (s *storedData) GetStoredDataByName(mtype, mname string) (string, int) {
