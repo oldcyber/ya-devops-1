@@ -31,6 +31,7 @@ func GetJSONMetrics(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	var m data.Metrics
 	err := json.NewDecoder(r.Body).Decode(&m)
+	log.Println("Получены данные:", m)
 	if err != nil {
 		return
 	}
@@ -43,13 +44,14 @@ func GetJSONMetrics(w http.ResponseWriter, r *http.Request) {
 	case "counter":
 		res = append(res, strconv.FormatInt(*m.Delta, 10))
 	default:
-		w.WriteHeader(http.StatusNotFound)
+		res = append(res, "")
 	}
 
 	if res == nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
+	log.Println("Данные для добавления:", res)
 	er, an := str.AddStoredData(res)
 	if !er {
 		w.WriteHeader(an)
