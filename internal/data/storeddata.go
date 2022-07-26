@@ -20,59 +20,9 @@ type StoredType struct {
 	counter int64
 }
 
-type Metrics struct {
-	ID    string   `json:"id"`              // Имя метрики
-	MType string   `json:"type"`            // параметр, принимающий значение gauge или counter
-	Delta *int64   `json:"delta,omitempty"` // Значение метрики в случае передачи counter
-	Value *float64 `json:"value,omitempty"` // Значение метрики в случае передачи gauge
-}
-
 func NewstoredData() *storedData {
 	return &storedData{}
 }
-
-//func (m *Metrics) AddJSONStoredData(res []string) (bool, int) {
-//	var err error
-//	var ok bool
-//	var id string
-//	var mtype string
-//	var delta int64
-//	var value float64
-//	for _, v := range res {
-//		if v == "" {
-//			continue
-//		}
-//		if v[0] == '{' {
-//			var metrics Metrics
-//			err = json.Unmarshal([]byte(v), &metrics)
-//			if err != nil {
-//				log.Printf("Ошибка при парсинге JSON: %s", err)
-//				continue
-//			}
-//			id = metrics.ID
-//			mtype = metrics.MType
-//			delta = *metrics.Delta
-//			value = *metrics.Value
-//		} else {
-//			id = v
-//			mtype = "gauge"
-//			delta = 0
-//			value = 0
-//		}
-//		if id == "" {
-//			log.Printf("Ошибка при парсинге JSON: не указан параметр id")
-//			continue
-//		}
-//		if mtype == "" {
-//			log.Printf("Ошибка при парсинге JSON: не указан параметр type")
-//			continue
-//		}
-//		if mtype != "gauge" && mtype != "counter" {
-//			log.Printf("Ошибка при парсинге JSON: не корректный параметр type")
-//			continue
-//		}
-//	}
-//}
 
 func (s *storedData) AddStoredData(res []string) (bool, int) {
 	if s.data == nil {
@@ -116,7 +66,7 @@ func (s *storedData) AddStoredData(res []string) (bool, int) {
 	}
 }
 
-func (s *storedData) GetStoredDataByName(mtype, mname string) (string, int) {
+func (s storedData) GetStoredDataByName(mtype, mname string) (string, int) {
 	log.Println("s.data", s.data)
 	for i := range s.data {
 		if i == mname {
@@ -130,7 +80,7 @@ func (s *storedData) GetStoredDataByName(mtype, mname string) (string, int) {
 	return "", 404
 }
 
-func (s *storedData) GetStoredData() map[string]string {
+func (s storedData) GetStoredData() map[string]string {
 	r := make(map[string]string)
 	for k, v := range s.data {
 		if v.gauge != 0 && v.counter == 0 {

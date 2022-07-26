@@ -1,17 +1,19 @@
 package agent
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"strconv"
 
+	"ya-devops-1/internal/data"
+
 	"ya-devops-1/internal/tools"
 )
 
 // sendGaugeMetrics отправляет данные типа gauge в сервис метрик
-
 func sendGaugeMetrics(m map[string]float64) {
 	//	Инициализируем клиента
 	client := &http.Client{}
@@ -34,6 +36,31 @@ func sendGaugeMetrics(m map[string]float64) {
 	}
 }
 
+// sendJSONGaugeMetrics отправляет данные типа gauge в сервис метрик в формате JSON
+func sendJSONGaugeMetrics(m map[string]float64) {
+	//	Инициализируем клиента
+	client := &http.Client{}
+	// проходим по метрикам и отправляем их на сервер
+	for key, val := range m {
+		func() {
+			m := data.Metrics{}
+			j := m.SendGaugeMetrics(key, val)
+			req, err := http.NewRequest(http.MethodPost, "http://127.0.0.1:8080/update/", bytes.NewBuffer(j))
+			if err != nil {
+				log.Fatalln(err)
+			}
+			req.Header.Add("Content-Type", "application/json")
+			resp, err := client.Do(req)
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+			defer resp.Body.Close()
+			log.Println("Статус-код ", resp.Status)
+		}()
+	}
+}
+
 // sendCounterMetrics отправляет данные типа counter в сервис метрик
 func sendCounterMetrics(c int64) {
 	//	Инициализируем клиента
@@ -44,6 +71,28 @@ func sendCounterMetrics(c int64) {
 			log.Fatalln(err)
 		}
 		req.Header.Add("Content-Type", "text/plain")
+		resp, err := client.Do(req)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		defer resp.Body.Close()
+		log.Println("Статус-код ", resp.Status)
+	}()
+}
+
+// sendJSONCounterMetrics отправляет данные типа counter в сервис метрик в формате JSON
+func sendJSONCounterMetrics(c int64) {
+	//	Инициализируем клиента
+	client := &http.Client{}
+	func() {
+		m := data.Metrics{}
+		j := m.SendCounterMetrics(c)
+		req, err := http.NewRequest(http.MethodPost, "http://127.0.0.1:8080/update/", bytes.NewBuffer(j))
+		if err != nil {
+			log.Fatalln(err)
+		}
+		req.Header.Add("Content-Type", "application/json")
 		resp, err := client.Do(req)
 		if err != nil {
 			fmt.Println(err)
