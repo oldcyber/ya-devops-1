@@ -24,6 +24,27 @@ func NewstoredData() *storedData {
 	return &storedData{}
 }
 
+func (s *storedData) AddStoredJSONData(m *Metrics) (bool, int) {
+	if s.data == nil {
+		s.data = map[string]StoredType{}
+	}
+	log.Println("Начинаем запись данных", m.ID, m.MType, m.Value, m.Delta)
+	switch m.MType {
+	case "gauge":
+		s.data[m.ID] = StoredType{gauge: *m.Value}
+		return true, 200
+	case "counter":
+		tt := s.data[m.ID]
+		log.Println("Предыдущее значение", tt.counter)
+		tt.counter += *m.Delta
+		log.Println("Новое значение", tt.counter)
+		s.data[m.ID] = StoredType{counter: tt.counter}
+		return true, 200
+	default:
+		return false, 400
+	}
+}
+
 func (s *storedData) AddStoredData(res []string) (bool, int) {
 	log.Println("Начинаем запись данных", len(res))
 	if s.data == nil {
@@ -71,7 +92,7 @@ func (s *storedData) AddStoredData(res []string) (bool, int) {
 }
 
 func (s storedData) GetStoredDataByName(mtype, mname string) (string, int) {
-	log.Println("Начинаем поиск данных тип", mtype, "имя", mname)
+	// log.Println("Начинаем поиск данных тип", mtype, "имя", mname)
 	for i := range s.data {
 		if i == mname {
 			log.Println("Нашли данные по имени", mname, "которые совпадают с записью", i)

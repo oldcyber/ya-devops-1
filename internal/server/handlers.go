@@ -3,7 +3,8 @@ package server
 import (
 	"encoding/json"
 	"net/http"
-	"strconv"
+
+	"github.com/mailru/easyjson"
 
 	log "github.com/sirupsen/logrus"
 
@@ -29,30 +30,35 @@ func GetRoot(w http.ResponseWriter, _ *http.Request) {
 // GetJSONMetrics читаем JSON из URL и сохраняем
 func GetJSONMetrics(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	var m data.Metrics
-	err := json.NewDecoder(r.Body).Decode(&m)
-	log.Println("Получены данные:", m)
+	m := &data.Metrics{}
+	err := easyjson.UnmarshalFromReader(r.Body, m)
 	if err != nil {
 		return
 	}
-	var res []string
-	res = append(res, m.MType)
-	res = append(res, m.ID)
-	switch m.MType {
-	case "gauge":
-		res = append(res, strconv.FormatFloat(*m.Value, 'f', -1, 64))
-	case "counter":
-		res = append(res, strconv.FormatInt(*m.Delta, 10))
-	default:
-		res = append(res, "")
-	}
+	er, an := str.AddStoredJSONData(m)
 
-	if res == nil {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-	log.Println("Данные для добавления:", res)
-	er, an := str.AddStoredData(res)
+	// var m data.Metrics
+	// err := json.NewDecoder(r.Body).Decode(&m)
+	log.Println("Получены данные:", &m)
+
+	//var res []string
+	//res = append(res, m.MType)
+	//res = append(res, m.ID)
+	//switch m.MType {
+	//case "gauge":
+	//	res = append(res, strconv.FormatFloat(*m.Value, 'f', -1, 64))
+	//case "counter":
+	//	res = append(res, strconv.FormatInt(*m.Delta, 10))
+	//default:
+	//	res = append(res, "")
+	//}
+	//
+	//if res == nil {
+	//	w.WriteHeader(http.StatusNotFound)
+	//	return
+	//}
+	//log.Println("Данные для добавления:", res)
+	//er, an = str.AddStoredData(res)
 	if !er {
 		w.WriteHeader(an)
 		return
@@ -122,8 +128,8 @@ func GetJSONValue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// ID и MType
-	log.Println(m)
-	log.Println(m.ID, m.MType)
+	// log.Println(m)
+	// log.Println(m.ID, m.MType)
 	typeM := m.MType
 	nameM := m.ID
 	if typeM != "gauge" && typeM != "counter" {
