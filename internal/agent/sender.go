@@ -2,9 +2,10 @@ package agent
 
 import (
 	"bytes"
-	"log"
 	"net/http"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 
 	"ya-devops-1/internal/data"
 )
@@ -83,20 +84,8 @@ func sendJSONGaugeMetrics(m map[string]float64) {
 				log.Println("Ошибка при отправке данных в сервис метрик: ", err)
 			} else {
 				defer resp.Body.Close()
-				log.Println("Отправлено на сервер:", m.ID, m.MType, "Статус-код ", resp.Status)
+				log.Println("Отправлено на сервер:", string(j), "Статус-код ", resp.Status)
 			}
-			//for retries > 0 {
-			//	resp, err = client.Do(req)
-			//	if err != nil {
-			//		log.Println("Ошибка при отправке данных в сервис метрик: ", err)
-			//		retries -= 1
-			//		log.Println("Повторная попытка отправки данных в сервис метрик", retries)
-			//		time.Sleep(10 * time.Second)
-			//	} else {
-			//		defer resp.Body.Close()
-			//		log.Println("Отправлено на сервер:", m.ID, m.MType, "Статус-код ", resp.Status)
-			//	}
-			//}
 		}()
 	}
 }
@@ -146,19 +135,7 @@ func sendJSONCounterMetrics(c int64) {
 			log.Println("Ошибка при отправке данных в сервис метрик: ", err)
 		} else {
 			defer resp.Body.Close()
-			log.Println("Отправлено на сервер:", m.ID, m.MType, "Статус-код ", resp.Status)
+			log.Println("Отправлено на сервер:", string(j), "Статус-код ", resp.Status)
 		}
-		//for retries > 0 {
-		//	resp, err = client.Do(req)
-		//	if err != nil {
-		//		log.Println("Ошибка при отправке данных в сервис метрик: ", err)
-		//		retries -= 1
-		//		log.Println("Повторная попытка отправки данных в сервис метрик", retries)
-		//		time.Sleep(10 * time.Second)
-		//	} else {
-		//		defer resp.Body.Close()
-		//		log.Println("Отправлено на сервер:", m.ID, m.MType, "Статус-код ", resp.Status)
-		//	}
-		//}
 	}()
 }

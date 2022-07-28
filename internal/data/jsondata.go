@@ -16,7 +16,6 @@ func (m *Metrics) SendGaugeMetrics(k string, v float64) []byte {
 	m.MType = "gauge"
 	m.Value = &v
 	rawBytes, err := easyjson.Marshal(m)
-	// b, err := json.Marshal(m)
 	if err != nil {
 		panic(err)
 	}
@@ -28,7 +27,6 @@ func (m *Metrics) SendCounterMetrics(c int64) []byte {
 	m.MType = "counter"
 	m.Delta = &c
 	rawBytes, err := easyjson.Marshal(m)
-	// b, err := json.Marshal(m)
 	if err != nil {
 		panic(err)
 	}

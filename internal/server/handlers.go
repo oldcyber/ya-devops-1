@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 
 	"github.com/mailru/easyjson"
@@ -17,48 +18,46 @@ var str = data.NewstoredData()
 
 // GetRoot сервер должен отдавать HTML-страничку со списком имён и значений всех известных ему на текущий момент метрик.
 func GetRoot(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("Content-Type", "text/plain")
-	for v, k := range str.GetStoredData() {
-		ik := "name: " + v + " value: " + k + "\n"
-		_, err := w.Write([]byte(ik))
+	w.Header().Set("Content-Type", "application/json")
+	res := str.GetStoredData()
+	for _, v := range res {
+		marshal, err := easyjson.Marshal(v)
+		if err != nil {
+			return
+		}
+		_, err = w.Write(marshal)
+		if err != nil {
+			return
+		}
+		_, err = w.Write([]byte("\n"))
 		if err != nil {
 			return
 		}
 	}
+	//_, err := w.Write(res)
+	//if err != nil {
+	//	return
+	//}
 }
 
 // GetJSONMetrics читаем JSON из URL и сохраняем
 func GetJSONMetrics(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	m := &data.Metrics{}
-	err := easyjson.UnmarshalFromReader(r.Body, m)
+	m := data.Metrics{}
+	b, err := io.ReadAll(r.Body)
+	// err := easyjson.UnmarshalFromReader(r.Body, &m)
 	if err != nil {
+		log.Println("Ошибка в Body", err)
 		return
 	}
+	log.Println("Полученные данные:", string(b))
+	err = easyjson.Unmarshal(b, &m)
+	if err != nil {
+		log.Println("Ошибка в Unmarshall", err)
+		return
+	}
+	// log.Println("Обработанные данные:", m)
 	er, an := str.AddStoredJSONData(m)
-
-	// var m data.Metrics
-	// err := json.NewDecoder(r.Body).Decode(&m)
-	log.Println("Получены данные:", &m)
-
-	//var res []string
-	//res = append(res, m.MType)
-	//res = append(res, m.ID)
-	//switch m.MType {
-	//case "gauge":
-	//	res = append(res, strconv.FormatFloat(*m.Value, 'f', -1, 64))
-	//case "counter":
-	//	res = append(res, strconv.FormatInt(*m.Delta, 10))
-	//default:
-	//	res = append(res, "")
-	//}
-	//
-	//if res == nil {
-	//	w.WriteHeader(http.StatusNotFound)
-	//	return
-	//}
-	//log.Println("Данные для добавления:", res)
-	//er, an = str.AddStoredData(res)
 	if !er {
 		w.WriteHeader(an)
 		return
@@ -68,25 +67,25 @@ func GetJSONMetrics(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetMetrics читаем данные из URL и сохраняем
-func GetMetrics(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/plain")
-	var res []string
-	res = append(res, chi.URLParam(r, "type"))
-	res = append(res, chi.URLParam(r, "name"))
-	res = append(res, chi.URLParam(r, "value"))
-
-	if res == nil {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-	er, an := str.AddStoredData(res)
-	if !er {
-		w.WriteHeader(an)
-		return
-	} else {
-		w.WriteHeader(200)
-	}
-}
+//func GetMetrics(w http.ResponseWriter, r *http.Request) {
+//	w.Header().Set("Content-Type", "text/plain")
+//	var res []string
+//	res = append(res, chi.URLParam(r, "type"))
+//	res = append(res, chi.URLParam(r, "name"))
+//	res = append(res, chi.URLParam(r, "value"))
+//
+//	if res == nil {
+//		w.WriteHeader(http.StatusNotFound)
+//		return
+//	}
+//	er, an := str.AddStoredData(res)
+//	if !er {
+//		w.WriteHeader(an)
+//		return
+//	} else {
+//		w.WriteHeader(200)
+//	}
+//}
 
 // GetValue должен возвращать текущее значение запрашиваемой метрики
 // в текстовом виде по запросу GET
@@ -142,14 +141,14 @@ func GetJSONValue(w http.ResponseWriter, r *http.Request) {
 	}
 
 	res, status := str.GetStoredDataByName(typeM, nameM)
-
 	if status != 200 {
 		w.WriteHeader(status)
 		return
 	}
-
-	_, err = w.Write([]byte(res))
+	log.Println(string(res))
+	_, err = w.Write(res)
 	if err != nil {
+		log.Println("Ошибка в Write", err)
 		return
 	}
 }

@@ -18,7 +18,7 @@ func main() {
 	r.Get("/", server.GetRoot)
 	r.Post("/update/", server.GetJSONMetrics)
 	r.Post("/value/", server.GetJSONValue)
-	r.Post("/update/{type}/{name}/{value}", server.GetMetrics)
+	// r.Post("/update/{type}/{name}/{value}", server.GetMetrics)
 	r.Get("/value/{type}/{name}", server.GetValue)
 
 	log.Error(http.ListenAndServe(":8080", r))
