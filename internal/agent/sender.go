@@ -5,15 +5,17 @@ import (
 	"net/http"
 	"time"
 
-	log "github.com/sirupsen/logrus"
+	"ya-devops-1/internal/tools"
 
+	log "github.com/sirupsen/logrus"
 	"ya-devops-1/internal/data"
 )
 
+// Pinger проверяет доступность сервера
 func Pinger() error {
 	//	Проверяем жив ли сервер
 	client := &http.Client{}
-	req, err := http.NewRequest(http.MethodGet, "http://127.0.0.1:8080", nil)
+	req, err := http.NewRequest(http.MethodGet, "http://"+tools.Conf.Address, nil)
 	if err != nil {
 		log.Println("Ошибка запроса: ", err)
 	}
@@ -73,7 +75,7 @@ func sendJSONGaugeMetrics(m map[string]float64) {
 			// retries := 3
 			var resp *http.Response
 			// var resp *http.Response
-			req, err := http.NewRequest(http.MethodPost, "http://127.0.0.1:8080/update/", bytes.NewBuffer(j))
+			req, err := http.NewRequest(http.MethodPost, "http://"+tools.Conf.Address+"/update/", bytes.NewBuffer(j))
 			if err != nil {
 				log.Println("Ошибка запроса: ", err)
 				// log.Println(err)
@@ -125,7 +127,7 @@ func sendJSONCounterMetrics(c int64) {
 		j := m.SendCounterMetrics(c)
 		// retries := 3
 		var resp *http.Response
-		req, err := http.NewRequest(http.MethodPost, "http://127.0.0.1:8080/update/", bytes.NewBuffer(j))
+		req, err := http.NewRequest(http.MethodPost, "http://"+tools.Conf.Address+"/update/", bytes.NewBuffer(j))
 		if err != nil {
 			log.Println(err)
 		}

@@ -3,6 +3,8 @@ package agent
 import (
 	"time"
 
+	"ya-devops-1/internal/tools"
+
 	"ya-devops-1/internal/data"
 )
 
@@ -10,9 +12,10 @@ import (
 func WorkWithMetrics() {
 	c := data.NewCounter()
 	m := data.NewMetricStore()
-	timer1 := time.NewTicker(2 * time.Second)
-	// mutex
-	timer2 := time.NewTicker(10 * time.Second)
+	timer1 := time.NewTicker(tools.Conf.PollInterval)
+	// timer1 := time.NewTicker(2 * time.Second)
+	timer2 := time.NewTicker(tools.Conf.ReportInterval)
+	// timer2 := time.NewTicker(10 * time.Second)
 	defer func() {
 		timer1.Stop()
 		timer2.Stop()

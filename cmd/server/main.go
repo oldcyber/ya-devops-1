@@ -3,6 +3,8 @@ package main
 import (
 	"net/http"
 
+	"ya-devops-1/internal/tools"
+
 	log "github.com/sirupsen/logrus"
 
 	"github.com/go-chi/chi/v5"
@@ -21,5 +23,5 @@ func main() {
 	r.Post("/update/{type}/{name}/{value}", server.UpdateMetrics)
 	r.Get("/value/{type}/{name}", server.GetMetric)
 
-	log.Error(http.ListenAndServe(":8080", r))
+	log.Error(http.ListenAndServe(tools.Conf.Address, r))
 }
