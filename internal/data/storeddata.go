@@ -28,7 +28,7 @@ func NewstoredData() *storedData {
 	return &storedData{}
 }
 
-func (s *storedData) StoreJSONToData(m Metrics) (error, int, []byte) {
+func (s *storedData) StoreJSONToData(m Metrics) (int, []byte, error) {
 	var out Metrics
 	var err error
 	var result []byte
@@ -41,10 +41,10 @@ func (s *storedData) StoreJSONToData(m Metrics) (error, int, []byte) {
 		out = Metrics{MType: "gauge", ID: m.ID, Value: m.Value, Delta: nil}
 		result, err = easyjson.Marshal(out)
 		if err != nil {
-			return err, http.StatusBadRequest, nil
+			return http.StatusBadRequest, nil, err
 		}
 		log.Println("Записали данные в метрику", m.ID, "значение", s.data[m.ID].gauge)
-		return err, http.StatusOK, result
+		return http.StatusOK, result, nil
 	case "counter":
 		tt := s.data[m.ID].counter
 		*m.Delta += tt
@@ -52,12 +52,12 @@ func (s *storedData) StoreJSONToData(m Metrics) (error, int, []byte) {
 		out = Metrics{MType: "counter", ID: m.ID, Value: nil, Delta: m.Delta}
 		result, err = easyjson.Marshal(out)
 		if err != nil {
-			return err, http.StatusBadRequest, nil
+			return http.StatusBadRequest, nil, err
 		}
 		log.Println("Записали данные в метрику", m.ID, "значение", s.data[m.ID].counter)
-		return err, http.StatusOK, result
+		return http.StatusOK, result, nil
 	default:
-		return err, http.StatusBadRequest, nil
+		return http.StatusBadRequest, nil, err
 	}
 }
 

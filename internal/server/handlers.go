@@ -56,7 +56,7 @@ func UpdateJSONMetrics(w http.ResponseWriter, r *http.Request) {
 		log.Println("Ошибка в Unmarshall", err)
 		return
 	}
-	err, status, res := str.StoreJSONToData(m)
+	status, res, err := str.StoreJSONToData(m)
 	if err != nil {
 		w.WriteHeader(status)
 		_, err = w.Write(res)
