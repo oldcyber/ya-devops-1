@@ -13,7 +13,7 @@ func Test_storedData_AddStoredJSONData(t *testing.T) {
 	type args struct {
 		m Metrics
 	}
-	var g float64 = 1.034
+	g := 1.034
 	var c int64 = 2
 	tests := []struct {
 		name   string
