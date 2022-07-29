@@ -54,7 +54,7 @@ package server
 //			request.Header.Set("Content-Type", "text/plain")
 //
 //			r := chi.NewRouter()
-//			r.Post("/update/{type}/{name}/{value}", GetMetrics)
+//			r.Post("/update/{type}/{name}/{value}", UpdateMetrics)
 //
 //			r.ServeHTTP(w, request)
 //			res := w.Result()
@@ -155,7 +155,7 @@ package server
 //			// request.Header.Set("Content-Type", "text/plain")
 //
 //			r := chi.NewRouter()
-//			r.Get("/value/{type}/{name}", GetValue)
+//			r.Get("/value/{type}/{name}", GetMetric)
 //			r.ServeHTTP(w, tt.args.r)
 //			str := data.NewstoredData()
 //			er, an := str.AddStoredData(tt.post.data)
