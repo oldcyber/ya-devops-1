@@ -30,3 +30,4 @@ vendor/
 /main
 /bin
 .DS_Store
+/agent
