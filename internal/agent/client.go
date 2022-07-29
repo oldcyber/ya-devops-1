@@ -27,8 +27,10 @@ func WorkWithMetrics() {
 			for key, val := range m.GetMetrics() {
 				r[key] = float64(val)
 			}
-			sendGaugeMetrics(r)
-			sendCounterMetrics(int64(c.Count()))
+			// sendGaugeMetrics(r)
+			sendJSONGaugeMetrics(r)
+			// sendCounterMetrics(int64(c.Count()))
+			sendJSONCounterMetrics(int64(c.Count()))
 		}
 	}
 }
