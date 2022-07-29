@@ -67,7 +67,7 @@ func Test_storedData_AddStoredJSONData(t *testing.T) {
 			s := &storedData{
 				data: tt.fields.data,
 			}
-			err, status, res := s.StoreJSONToData(tt.args.m)
+			status, res, err := s.StoreJSONToData(tt.args.m)
 			if err != tt.err {
 				t.Errorf("StoreJSONToData() err = %v, err %v", err, tt.err)
 			}
