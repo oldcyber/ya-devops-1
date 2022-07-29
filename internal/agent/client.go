@@ -16,6 +16,7 @@ func WorkWithMetrics() {
 	// timer1 := time.NewTicker(2 * time.Second)
 	timer2 := time.NewTicker(tools.Conf.ReportInterval)
 	// timer2 := time.NewTicker(10 * time.Second)
+
 	defer func() {
 		timer1.Stop()
 		timer2.Stop()
