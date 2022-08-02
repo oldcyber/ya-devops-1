@@ -190,7 +190,6 @@ func SaveLog(of *tools.OutFile) error {
 func ReadLogFile() error {
 	var val string
 	fo, err := os.Open(tools.Conf.StoreFile)
-	// fo, err := tools.OpenReadFile(tools.Conf.StoreFile)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -200,7 +199,6 @@ func ReadLogFile() error {
 	scanner := bufio.NewScanner(fo)
 	for scanner.Scan() {
 		var m data.Metrics
-		log.Info("scanner.Text()", scanner.Text())
 		err := json.Unmarshal([]byte(scanner.Text()), &m)
 		if err != nil {
 			log.Error(err)
@@ -214,9 +212,6 @@ func ReadLogFile() error {
 			log.Error("Нет такого типа метрики")
 			return err
 		}
-
-		log.Info("val:", val)
-		log.Info("read parameter from file: ", m.ID, m.MType, &val)
 		str.AddStoredData([]string{m.MType, m.ID, val})
 	}
 	return nil

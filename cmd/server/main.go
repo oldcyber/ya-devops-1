@@ -1,11 +1,13 @@
 package main
 
 import (
+	"flag"
 	"net/http"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 
 	"ya-devops-1/internal/tools"
 
@@ -20,6 +22,34 @@ import (
 // var OpenWriteToFile *tools.OutFile
 
 func main() {
+	checkEnv := func(key string) bool {
+		_, ok := os.LookupEnv(key)
+		if !ok {
+			return false
+		} else {
+			return true
+		}
+	}
+	Address := flag.String("a", "", "address")
+	Restore := flag.Bool("r", true, "restore")
+	StoreInterval := flag.Int("i", 0, "store interval")
+	StoreFile := flag.String("f", "", "store file")
+	flag.Parse()
+
+	if !checkEnv("ADDRESS") && *Address != "" {
+		tools.Conf.Address = *Address
+	}
+	if !checkEnv("RESTORE") && *Restore != tools.Conf.Restore {
+		tools.Conf.Restore = *Restore
+	}
+	if !checkEnv("STORE_INTERVAL") && *StoreInterval != 0 {
+		tools.Conf.StoreInterval = time.Duration(*StoreInterval) * time.Second
+	}
+	if !checkEnv("STORE_FILE") && *StoreFile != "" {
+		tools.Conf.StoreFile = *StoreFile
+	}
+	log.Println("loading config. Address:", tools.Conf.Address, "Restore:", tools.Conf.Restore, "Store interval", tools.Conf.StoreInterval.Seconds(), "Store file", tools.Conf.StoreFile)
+
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
