@@ -2,6 +2,10 @@ package main
 
 import (
 	"net/http"
+	"os"
+	"os/signal"
+	"sync"
+	"syscall"
 
 	"ya-devops-1/internal/tools"
 
@@ -13,6 +17,8 @@ import (
 	"ya-devops-1/internal/server"
 )
 
+// var OpenWriteToFile *tools.OutFile
+
 func main() {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
@@ -23,5 +29,44 @@ func main() {
 	r.Post("/update/{type}/{name}/{value}", server.UpdateMetrics)
 	r.Get("/value/{type}/{name}", server.GetMetric)
 
-	log.Error(http.ListenAndServe(tools.Conf.Address, r))
+	c := make(chan os.Signal)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+
+	wg := new(sync.WaitGroup)
+	wg.Add(2)
+	go func() {
+		log.Error(http.ListenAndServe(tools.Conf.Address, r))
+		wg.Done()
+	}()
+	go func() {
+		err := tools.Conf.Restore
+		if err != false {
+			err := server.ReadLogFile()
+			if err != nil {
+				log.Error(err)
+			}
+		}
+
+		if tools.Conf.StoreFile != "" {
+			err := server.WorkWithLogs()
+			if err != nil {
+				log.Error(err)
+				return
+			}
+		} else {
+			log.Info("Писать ничего не будем")
+			return
+		}
+		wg.Done()
+	}()
+	go func() {
+		<-c
+		//err := tools.CloseFile(server.FO)
+		//if err != nil {
+		//	log.Error(err)
+		//}
+		log.Info("Shutdown server")
+		os.Exit(1)
+	}()
+	wg.Wait()
 }

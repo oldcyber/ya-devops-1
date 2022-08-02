@@ -1,23 +1,24 @@
 package data
 
 import (
-	"log"
 	"net/http"
 	"strconv"
 
 	"github.com/mailru/easyjson"
+	log "github.com/sirupsen/logrus"
 )
 
 type StoredDataIface interface {
 	AddStoredData(res []string) (bool, int)
 	GetStoredData() *map[string]string
 	GetStoredDataByName(mtype, mname string)
-	// StoredDataToJSON()
+	StoredDataToJSON() []Metrics
 }
 
 type StoredType struct {
 	gauge   float64
 	counter int64
+	stype   string
 }
 
 type storedData struct {
@@ -29,15 +30,17 @@ func NewstoredData() *storedData {
 }
 
 func (s *storedData) StoreJSONToData(m Metrics) (int, []byte, error) {
-	var out Metrics
-	var err error
-	var result []byte
+	var (
+		out    Metrics
+		err    error
+		result []byte
+	)
 	if s.data == nil {
 		s.data = map[string]StoredType{}
 	}
 	switch m.MType {
 	case "gauge":
-		s.data[m.ID] = StoredType{gauge: *m.Value}
+		s.data[m.ID] = StoredType{gauge: *m.Value, stype: m.MType}
 		out = Metrics{MType: "gauge", ID: m.ID, Value: m.Value, Delta: nil}
 		result, err = easyjson.Marshal(out)
 		if err != nil {
@@ -48,7 +51,7 @@ func (s *storedData) StoreJSONToData(m Metrics) (int, []byte, error) {
 	case "counter":
 		tt := s.data[m.ID].counter
 		*m.Delta += tt
-		s.data[m.ID] = StoredType{counter: *m.Delta}
+		s.data[m.ID] = StoredType{counter: *m.Delta, stype: m.MType}
 		out = Metrics{MType: "counter", ID: m.ID, Value: nil, Delta: m.Delta}
 		result, err = easyjson.Marshal(out)
 		if err != nil {
@@ -87,6 +90,7 @@ func (s *storedData) AddStoredData(res []string) (bool, int) {
 		// Запись через присваивание
 		tt := s.data[res[1]]
 		tt.gauge = g
+		tt.stype = res[0]
 		s.data[res[1]] = tt
 		log.Println("Записали данные в метрику", res[1], "значение", g)
 		// s.data[res[1]] = StoredType{gauge: g}
@@ -99,7 +103,7 @@ func (s *storedData) AddStoredData(res []string) (bool, int) {
 		}
 		tCounter := s.GetStoredData()
 		t, _ := strconv.ParseInt(tCounter[res[1]], 10, 64)
-		s.data[res[1]] = StoredType{counter: t + c}
+		s.data[res[1]] = StoredType{counter: t + c, stype: res[0]}
 		log.Println("Записали данные в метрику", res[1], "значение", t+c)
 		return true, 200
 	default:
@@ -148,42 +152,27 @@ func (s storedData) GetStoredDataByParamToJSON(mtype, mname string) ([]byte, int
 
 func (s storedData) StoredDataToJSON() []Metrics {
 	var out Metrics
-	// var result []byte
 	var w []Metrics
-	// var err error
-	// r := make(map[string]string)
 	for k, v := range s.data {
-		if v.gauge != 0 && v.counter == 0 {
+		if v.stype == "gauge" {
 			te := s.data[k].gauge
 			out = Metrics{MType: "gauge", ID: k, Value: &te}
 			w = append(w, out)
-			//result, err = easyjson.Marshal(out)
-			//if err != nil {
-			//	return nil
-			//}
-			// return result
-			// r[k] = strconv.FormatFloat(v.gauge, 'f', -1, 64)
-		} else {
+		} else if v.stype == "counter" {
 			te := s.data[k].counter
 			out = Metrics{MType: "counter", ID: k, Delta: &te}
 			w = append(w, out)
-			//result, err = easyjson.Marshal(out)
-			//if err != nil {
-			//	return nil
-			//}
-			// r[k] = strconv.FormatInt(v.counter, 10)
 		}
 	}
-	// result, err = easyjson.Marshal()
 	return w
 }
 
 func (s storedData) GetStoredData() map[string]string {
 	r := make(map[string]string)
 	for k, v := range s.data {
-		if v.gauge != 0 && v.counter == 0 {
+		if v.stype == "gauge" {
 			r[k] = strconv.FormatFloat(v.gauge, 'f', -1, 64)
-		} else {
+		} else if v.stype == "counter" {
 			r[k] = strconv.FormatInt(v.counter, 10)
 		}
 	}
@@ -191,7 +180,7 @@ func (s storedData) GetStoredData() map[string]string {
 }
 
 func (s storedData) GetStoredDataByName(mtype, mname string) (string, int) {
-	log.Println("s.data", s.data)
+	log.Info("s.data", s.data)
 	for i := range s.data {
 		if i == mname {
 			if mtype == "gauge" {
