@@ -41,7 +41,7 @@ func GetRoot(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	} else {
-		w.Header().Set("Content-Type", contentType)
+		w.Header().Set("Content-Type", "text/html")
 		//	f, err := os.Open("index.html")
 		//	if err != nil {
 		//		log.Error("Ошибка в Open", err)
