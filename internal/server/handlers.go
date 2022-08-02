@@ -1,7 +1,17 @@
 package server
 
 import (
+	"bufio"
+	"encoding/json"
 	"net/http"
+	"os"
+	"strconv"
+
+	"ya-devops-1/internal/tools"
+
+	"github.com/mailru/easyjson"
+
+	log "github.com/sirupsen/logrus"
 
 	"ya-devops-1/internal/data"
 
@@ -12,18 +22,63 @@ var str = data.NewstoredData()
 
 // GetRoot сервер должен отдавать HTML-страничку со списком имён и значений всех известных ему на текущий момент метрик.
 func GetRoot(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("Content-Type", "text/plain")
-	for v, k := range str.GetStoredData() {
-		ik := "name: " + v + " value: " + k + "\n"
-		_, err := w.Write([]byte(ik))
+	w.Header().Set("Content-Type", "application/json")
+	res := str.StoredDataToJSON()
+	for _, v := range res {
+		marshal, err := easyjson.Marshal(v)
+		if err != nil {
+			return
+		}
+		_, err = w.Write(marshal)
+		if err != nil {
+			return
+		}
+		_, err = w.Write([]byte("\n"))
 		if err != nil {
 			return
 		}
 	}
 }
 
-// GetMetrics читаем данные из URL и сохраняем
-func GetMetrics(w http.ResponseWriter, r *http.Request) {
+// UpdateJSONMetrics читаем JSON из URL и сохраняем
+func UpdateJSONMetrics(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	m := data.Metrics{}
+	//b, err := io.ReadAll(r.Body)
+	// err := easyjson.UnmarshalFromReader(r.Body, &m)
+	//if err != nil {
+	//	log.Println("Ошибка в Body", err)
+	//	return
+	//}
+	//log.Println("Полученные данные:", string(b))
+	//err = json.Unmarshal(b, &m)
+	err := easyjson.UnmarshalFromReader(r.Body, &m)
+	if err != nil {
+		log.Println("Ошибка в Unmarshall", err)
+		return
+	}
+	status, res, err := str.StoreJSONToData(m)
+	if err != nil {
+		w.WriteHeader(status)
+		_, err = w.Write(res)
+		if err != nil {
+			log.Println("Ошибка в Write", err)
+			return
+		}
+		log.Println(err)
+		return
+	} else {
+		w.WriteHeader(status)
+		_, err = w.Write(res)
+		if err != nil {
+			log.Println("Ошибка в Write", err)
+			return
+		}
+	}
+}
+
+// UpdateMetrics читаем данные из URL и сохраняем
+func UpdateMetrics(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 	var res []string
 	res = append(res, chi.URLParam(r, "type"))
@@ -43,10 +98,10 @@ func GetMetrics(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// GetValue должен возвращать текущее значение запрашиваемой метрики
+// GetMetric должен возвращать текущее значение запрашиваемой метрики
 // в текстовом виде по запросу GET
 // http://<АДРЕС_СЕРВЕРА>/value/<ТИП_МЕТРИКИ>/<ИМЯ_МЕТРИКИ>
-func GetValue(w http.ResponseWriter, r *http.Request) {
+func GetMetric(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 	typeM := chi.URLParam(r, "type")
 	nameM := chi.URLParam(r, "name")
@@ -68,6 +123,96 @@ func GetValue(w http.ResponseWriter, r *http.Request) {
 
 	_, err := w.Write([]byte(res))
 	if err != nil {
+		log.Error("Ошибка в Write", err)
 		return
 	}
+}
+
+// GetJSONMetric должен возвращать текущее значение запрашиваемой метрики
+// в текстовом виде по запросу GET
+// http://<АДРЕС_СЕРВЕРА>/value/{JSON}
+func GetJSONMetric(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	var m data.Metrics
+	err := json.NewDecoder(r.Body).Decode(&m)
+	if err != nil {
+		return
+	}
+	log.Info(m.ID, m.MType)
+	typeM := m.MType
+	nameM := m.ID
+	if typeM != "gauge" && typeM != "counter" {
+		w.WriteHeader(http.StatusNotFound)
+		_, err := w.Write([]byte("Нет такого типа метрики"))
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		return
+	}
+
+	res, status := str.GetStoredDataByParamToJSON(typeM, nameM)
+	if status != 200 {
+		w.WriteHeader(status)
+		return
+	}
+	log.Println(string(res))
+	_, err = w.Write(res)
+	if err != nil {
+		log.Error("Ошибка в Write", err)
+		return
+	}
+}
+
+// var OFile *tools.OutFile
+
+// SaveLog is a function to save log to a file
+func SaveLog(of *tools.OutFile) error {
+	log.Info("Start function SaveLog")
+	sdi := str.StoredDataToJSON()
+	log.Info("sdi", sdi)
+	for _, v := range sdi {
+		marshal, err := easyjson.Marshal(v)
+		log.Info("marshal: ", string(marshal))
+		marshal = append(marshal, '\n')
+		if err != nil {
+			return err
+		}
+		err = tools.WriteToFile(of, marshal)
+		if err != nil {
+			log.Error(err)
+			return err
+		}
+	}
+	return nil
+}
+
+func ReadLogFile() error {
+	var val string
+	fo, err := os.Open(tools.Conf.StoreFile)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	defer fo.Close()
+
+	scanner := bufio.NewScanner(fo)
+	for scanner.Scan() {
+		var m data.Metrics
+		err := json.Unmarshal([]byte(scanner.Text()), &m)
+		if err != nil {
+			log.Error(err)
+			return err
+		}
+		if m.MType == "gauge" {
+			val = strconv.FormatFloat(*m.Value, 'f', -1, 64)
+		} else if m.MType == "counter" {
+			val = strconv.FormatInt(*m.Delta, 10)
+		} else {
+			log.Error("Нет такого типа метрики")
+			return err
+		}
+		str.AddStoredData([]string{m.MType, m.ID, val})
+	}
+	return nil
 }
