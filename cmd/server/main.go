@@ -46,10 +46,11 @@ func main() {
 	wg := new(sync.WaitGroup)
 	wg.Add(2)
 	go func() {
-		log.Error(http.ListenAndServe(cfg.GetAddress(), r))
 		wg.Done()
+		log.Error(http.ListenAndServe(cfg.GetAddress(), r))
 	}()
 	go func() {
+		wg.Done()
 		err := cfg.GetRestore()
 		if err {
 			err := server.ReadLogFile(cfg)
@@ -68,7 +69,6 @@ func main() {
 			log.Info("Писать ничего не будем")
 			return
 		}
-		wg.Done()
 	}()
 	go func() {
 		<-c
