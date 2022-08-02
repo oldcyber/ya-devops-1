@@ -51,6 +51,7 @@ func main() {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Compress(5))
+	r.Use(server.GzipMiddleware)
 	r.Get("/", server.GetRoot)
 	r.Post("/update/", server.UpdateJSONMetrics)
 	r.Post("/value/", server.GetJSONMetric)
