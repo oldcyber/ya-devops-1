@@ -21,22 +21,42 @@ import (
 var str = data.NewstoredData()
 
 // GetRoot сервер должен отдавать HTML-страничку со списком имён и значений всех известных ему на текущий момент метрик.
-func GetRoot(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	res := str.StoredDataToJSON()
-	for _, v := range res {
-		marshal, err := easyjson.Marshal(v)
-		if err != nil {
-			return
+func GetRoot(w http.ResponseWriter, r *http.Request) {
+	contentType := r.Header.Get("Content-type")
+	if contentType == "application/json" {
+		w.Header().Set("Content-Type", "application/json")
+		res := str.StoredDataToJSON()
+		for _, v := range res {
+			marshal, err := easyjson.Marshal(v)
+			if err != nil {
+				return
+			}
+			_, err = w.Write(marshal)
+			if err != nil {
+				return
+			}
+			_, err = w.Write([]byte("\n"))
+			if err != nil {
+				return
+			}
 		}
-		_, err = w.Write(marshal)
-		if err != nil {
-			return
-		}
-		_, err = w.Write([]byte("\n"))
-		if err != nil {
-			return
-		}
+	} else {
+		w.Header().Set("Content-Type", contentType)
+		//	f, err := os.Open("index.html")
+		//	if err != nil {
+		//		log.Error("Ошибка в Open", err)
+		//		return
+		//	}
+		//	defer f.Close()
+		//	scanner := bufio.NewScanner(f)
+		//	for scanner.Scan() {
+		//		_, err := w.Write(scanner.Bytes())
+		//		if err != nil {
+		//			log.Error("Ошибка в Write", err)
+		//			return
+		//		}
+		//	}
+		//}
 	}
 }
 
