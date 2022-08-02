@@ -3,9 +3,9 @@ package main
 import (
 	"flag"
 	"os"
-	"time"
 
 	log "github.com/sirupsen/logrus"
+
 	"ya-devops-1/internal/agent"
 	"ya-devops-1/internal/tools"
 )
@@ -21,8 +21,8 @@ func main() {
 	}
 
 	Address := flag.String("a", "", "address")
-	ReportInterval := flag.Int("r", 0, "report interval")
-	PoolInterval := flag.Int("p", 0, "pool interval")
+	ReportInterval := flag.Duration("r", 0, "report interval")
+	PoolInterval := flag.Duration("p", 0, "pool interval")
 	flag.Parse()
 
 	log.Println("Start agent")
@@ -30,10 +30,10 @@ func main() {
 		tools.Conf.Address = *Address
 	}
 	if !checkEnv("REPORT_INTERVAL") && *ReportInterval != 0 {
-		tools.Conf.ReportInterval = time.Duration(*ReportInterval) * time.Second
+		tools.Conf.ReportInterval = *ReportInterval
 	}
 	if !checkEnv("POLL_INTERVAL") && *PoolInterval != 0 {
-		tools.Conf.PollInterval = time.Duration(*PoolInterval) * time.Second
+		tools.Conf.PollInterval = *PoolInterval
 	}
 	log.Println("loading config. Address:", tools.Conf.Address, "Poll interval:", tools.Conf.PollInterval.Seconds(), "Report interval", tools.Conf.ReportInterval.Seconds())
 	// log.Println("loading config. Address:", *Address, "Poll interval:", *PoolInterval, "Report interval", *ReportInterval)
