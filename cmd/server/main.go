@@ -7,7 +7,6 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
-	"time"
 
 	"ya-devops-1/internal/tools"
 
@@ -32,10 +31,10 @@ func main() {
 	}
 	Address := flag.String("a", "", "address")
 	Restore := flag.Bool("r", true, "restore")
-	StoreInterval := flag.Int("i", 0, "store interval")
+	StoreInterval := flag.Duration("i", 0, "store interval")
 	StoreFile := flag.String("f", "", "store file")
 	flag.Parse()
-
+	log.Info("StoreInterval: ", *StoreInterval, " tools.Conf.StoreInterval: ", tools.Conf.StoreInterval)
 	if !checkEnv("ADDRESS") && *Address != "" {
 		tools.Conf.Address = *Address
 	}
@@ -43,7 +42,7 @@ func main() {
 		tools.Conf.Restore = *Restore
 	}
 	if !checkEnv("STORE_INTERVAL") && *StoreInterval != 0 {
-		tools.Conf.StoreInterval = time.Duration(*StoreInterval) * time.Second
+		tools.Conf.StoreInterval = *StoreInterval
 	}
 	if !checkEnv("STORE_FILE") && *StoreFile != "" {
 		tools.Conf.StoreFile = *StoreFile
