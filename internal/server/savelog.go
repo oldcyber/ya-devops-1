@@ -14,12 +14,12 @@ var (
 )
 
 func WorkWithLogs() error {
-	if tools.Conf.StoreInterval <= 0 {
+	if tools.Conf.StoreInterval == 0 {
 		log.Info("Надо писать в живую")
 		return nil
 	}
-	timeDuration := time.Duration(tools.Conf.StoreInterval)
-	timer1 := time.NewTicker(timeDuration * time.Second)
+	// timeDuration := time.NewTicker(tools.Conf.StoreInterval)
+	timer1 := time.NewTicker(tools.Conf.StoreInterval)
 	defer func() {
 		timer1.Stop()
 	}()

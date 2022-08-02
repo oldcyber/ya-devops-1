@@ -40,7 +40,7 @@ func main() {
 	}()
 	go func() {
 		err := tools.Conf.Restore
-		if err != false {
+		if err {
 			err := server.ReadLogFile()
 			if err != nil {
 				log.Error(err)
