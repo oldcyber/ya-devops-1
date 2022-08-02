@@ -18,8 +18,6 @@ import (
 	"ya-devops-1/internal/server"
 )
 
-// var OpenWriteToFile *tools.OutFile
-
 func main() {
 	checkEnv := func(key string) bool {
 		_, ok := os.LookupEnv(key)
@@ -52,6 +50,7 @@ func main() {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+	r.Use(middleware.Compress(5))
 	r.Get("/", server.GetRoot)
 	r.Post("/update/", server.UpdateJSONMetrics)
 	r.Post("/value/", server.GetJSONMetric)
