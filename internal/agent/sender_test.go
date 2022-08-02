@@ -1,7 +1,5 @@
 package agent
 
-import "testing"
-
 //func Test_sendCounterMetrics(t *testing.T) {
 //	type args struct {
 //		c int64
@@ -26,19 +24,19 @@ import "testing"
 //	}
 //}
 
-func Test_sendGaugeMetrics(t *testing.T) {
-	type args struct {
-		m map[string]float64
-	}
-	tests := []struct {
-		name string
-		args args
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			sendGaugeMetrics(tt.args.m)
-		})
-	}
-}
+//func Test_sendGaugeMetrics(t *testing.T) {
+//	type args struct {
+//		m map[string]float64
+//	}
+//	tests := []struct {
+//		name string
+//		args args
+//	}{
+//		// TODO: Add test cases.
+//	}
+//	for _, tt := range tests {
+//		t.Run(tt.name, func(t *testing.T) {
+//			sendGaugeMetrics(tt.args.m)
+//		})
+//	}
+//}

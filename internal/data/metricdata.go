@@ -61,6 +61,8 @@ func (ms *metricStore) AddMetrics() {
 	ms.data["Lookups"] = gauge(rtm.Lookups)
 	ms.data["MCacheInuse"] = gauge(rtm.MCacheInuse)
 	ms.data["MCacheSys"] = gauge(rtm.MCacheSys)
+	ms.data["MSpanInuse"] = gauge(rtm.MSpanInuse)
+	ms.data["MSpanSys"] = gauge(rtm.MSpanSys)
 	ms.data["Mallocs"] = gauge(rtm.Mallocs)
 	ms.data["NextGC"] = gauge(rtm.NextGC)
 	ms.data["NumForcedGC"] = gauge(rtm.NumForcedGC)
