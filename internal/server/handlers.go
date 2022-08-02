@@ -1,8 +1,13 @@
 package server
 
 import (
+	"bufio"
 	"encoding/json"
 	"net/http"
+	"os"
+	"strconv"
+
+	"ya-devops-1/internal/tools"
 
 	"github.com/mailru/easyjson"
 
@@ -33,10 +38,6 @@ func GetRoot(w http.ResponseWriter, _ *http.Request) {
 			return
 		}
 	}
-	//_, err := w.Write(res)
-	//if err != nil {
-	//	return
-	//}
 }
 
 // UpdateJSONMetrics читаем JSON из URL и сохраняем
@@ -122,7 +123,7 @@ func GetMetric(w http.ResponseWriter, r *http.Request) {
 
 	_, err := w.Write([]byte(res))
 	if err != nil {
-		log.Println("Ошибка в Write", err)
+		log.Error("Ошибка в Write", err)
 		return
 	}
 }
@@ -137,15 +138,14 @@ func GetJSONMetric(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
-	// ID и MType
-	// log.Println(m)
-	// log.Println(m.ID, m.MType)
+	log.Info(m.ID, m.MType)
 	typeM := m.MType
 	nameM := m.ID
 	if typeM != "gauge" && typeM != "counter" {
 		w.WriteHeader(http.StatusNotFound)
 		_, err := w.Write([]byte("Нет такого типа метрики"))
 		if err != nil {
+			log.Error(err)
 			return
 		}
 		return
@@ -159,7 +159,60 @@ func GetJSONMetric(w http.ResponseWriter, r *http.Request) {
 	log.Println(string(res))
 	_, err = w.Write(res)
 	if err != nil {
-		log.Println("Ошибка в Write", err)
+		log.Error("Ошибка в Write", err)
 		return
 	}
+}
+
+// var OFile *tools.OutFile
+
+// SaveLog is a function to save log to a file
+func SaveLog(of *tools.OutFile) error {
+	log.Info("Start function SaveLog")
+	sdi := str.StoredDataToJSON()
+	log.Info("sdi", sdi)
+	for _, v := range sdi {
+		marshal, err := easyjson.Marshal(v)
+		log.Info("marshal: ", string(marshal))
+		marshal = append(marshal, '\n')
+		if err != nil {
+			return err
+		}
+		err = tools.WriteToFile(of, marshal)
+		if err != nil {
+			log.Error(err)
+			return err
+		}
+	}
+	return nil
+}
+
+func ReadLogFile() error {
+	var val string
+	fo, err := os.Open(tools.Conf.StoreFile)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	defer fo.Close()
+
+	scanner := bufio.NewScanner(fo)
+	for scanner.Scan() {
+		var m data.Metrics
+		err := json.Unmarshal([]byte(scanner.Text()), &m)
+		if err != nil {
+			log.Error(err)
+			return err
+		}
+		if m.MType == "gauge" {
+			val = strconv.FormatFloat(*m.Value, 'f', -1, 64)
+		} else if m.MType == "counter" {
+			val = strconv.FormatInt(*m.Delta, 10)
+		} else {
+			log.Error("Нет такого типа метрики")
+			return err
+		}
+		str.AddStoredData([]string{m.MType, m.ID, val})
+	}
+	return nil
 }
