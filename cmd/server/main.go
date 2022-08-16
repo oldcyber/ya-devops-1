@@ -61,7 +61,7 @@ func main() {
 		if cfg.StoreFile != "" {
 			err := server.WorkWithLogs(cfg)
 			if err != nil {
-				log.Error(err)
+				log.Error("Проблема с записью из main", err)
 				return
 			}
 		} else {

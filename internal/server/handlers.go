@@ -213,13 +213,12 @@ func GetJSONMetric(w http.ResponseWriter, r *http.Request) {
 
 // SaveLog is a function to save log to a file
 func SaveLog(f outFile) error {
-	// ofi := tools.NewOutFile()
-	log.Info("Start function SaveLog")
+	// log.Info("Start function SaveLog")
 	sdi := str.StoredDataToJSON()
 	log.Info("sdi", sdi)
 	for _, v := range sdi {
 		marshal, err := easyjson.Marshal(v)
-		log.Info("marshal: ", string(marshal))
+		// log.Info("marshal: ", string(marshal))
 		marshal = append(marshal, '\n')
 		if err != nil {
 			return err

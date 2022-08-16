@@ -18,12 +18,6 @@ type config interface {
 
 func WorkWithLogs(cfg config) error {
 	log.Info("Loading store file:", cfg.GetStoreFile(), " store interval:", cfg.GetStoreInterval())
-	f, err := tools.OpenWriteToFile(cfg.GetStoreFile(), cfg.GetStoreInterval())
-	//_, err := outFile.OpenWriteToFile(cfg.GetStoreFile(), cfg.GetStoreInterval())
-	if err != nil {
-		log.Error(err)
-		return err
-	}
 	if cfg.GetStoreInterval() == 0 {
 		log.Info("Надо писать в живую")
 		return nil
@@ -36,17 +30,20 @@ func WorkWithLogs(cfg config) error {
 	for {
 		<-timer1.C
 		log.Info("Start saving logs")
+		f, err := tools.OpenWriteToFile(cfg.GetStoreFile(), cfg.GetStoreInterval())
+		if err != nil {
+			return err
+		}
 		err = SaveLog(f)
 		if err != nil {
-			log.Error(err)
 			return err
 		}
 		err = f.CloseFile()
 		if err != nil {
-			log.Error(err)
 			return err
 		}
 		log.Info("Log file saved")
 	}
+
 	//}
 }

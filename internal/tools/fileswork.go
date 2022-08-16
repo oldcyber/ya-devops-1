@@ -13,13 +13,6 @@ type outFile struct {
 	mtx  sync.RWMutex // Мьютекс для записи
 }
 
-//func NewOutFile() *outFile {
-//	return &outFile{
-//		file: nil,
-//		mtx:  sync.RWMutex{},
-//	}
-//}
-
 func OpenWriteToFile(filename string, storeinterval time.Duration) (*outFile, error) {
 	var (
 		file outFile
@@ -45,11 +38,16 @@ func OpenWriteToFile(filename string, storeinterval time.Duration) (*outFile, er
 func (of *outFile) WriteToFile(data []byte) error {
 	of.mtx.Lock()
 	defer of.mtx.Unlock()
+	// Check if file is open
+	if of.file == nil {
+		return nil
+	}
 	_, err := of.file.Write(data)
 	if err != nil {
-		log.Errorf("Error writing to file: %v", err)
+		log.Error("Error writing to file: ", err)
 		return err
 	}
+	log.Info("Записали в файл:", string(data))
 	return nil
 }
 
