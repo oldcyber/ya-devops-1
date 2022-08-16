@@ -90,7 +90,7 @@ func (c *config) InitFromAgentFlags() error {
 	if !checkEnv("ADDRESS") && *Address != "" {
 		c.Address = *Address
 	}
-	if !checkEnv("REPORT_INTERVAL") && *ReportInterval != c.ReportInterval {
+	if !checkEnv("REPORT_INTERVAL") && *ReportInterval != 0 {
 		c.ReportInterval = *ReportInterval
 	}
 	if !checkEnv("POLL_INTERVAL") && *PoolInterval != 0 {
