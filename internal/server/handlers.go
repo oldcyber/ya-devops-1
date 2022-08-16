@@ -10,8 +10,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/oldcyber/ya-devops-1/internal/tools"
-
 	"github.com/mailru/easyjson"
 
 	log "github.com/sirupsen/logrus"
@@ -21,12 +19,9 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-var (
-	str = data.NewstoredData()
-	cfg = tools.NewConfig()
-	// ci  tools.Config
-	// ofi tools.OutFileInterface
-)
+var str = data.NewstoredData() // cfg = tools.NewConfig()
+// ci  tools.Config
+// ofi tools.OutFileInterface
 
 type outFile interface {
 	WriteToFile([]byte) error
@@ -67,7 +62,7 @@ func (w gzipWriter) Write(b []byte) (int, error) {
 	return w.Writer.Write(b)
 }
 
-// HTTP middleware setting a value on the request context
+// GzipMiddleware HTTP middleware setting a value on the request context
 func GzipMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
@@ -232,10 +227,10 @@ func SaveLog(f outFile) error {
 	return nil
 }
 
-func ReadLogFile() error {
+func ReadLogFile(cfg config) error {
 	var val string
-
-	fo, err := os.Open(cfg.StoreFile)
+	log.Info("cfg.LogFile", cfg.GetStoreFile())
+	fo, err := os.Open(cfg.GetStoreFile())
 	if err != nil {
 		log.Error(err)
 		return err

@@ -10,6 +10,7 @@ type config interface {
 	GetPollInterval() time.Duration
 	GetReportInterval() time.Duration
 	GetAddress() string
+	GetRestore() bool
 }
 
 func WorkWithMetrics(cfg config) error {

@@ -38,6 +38,10 @@ func (c *config) GetReportInterval() time.Duration {
 	return c.ReportInterval
 }
 
+func (c *config) GetRestore() bool {
+	return c.Restore
+}
+
 func (c *config) InitFromEnv() error {
 	if err := env.Parse(c); err != nil {
 		log.Error(err)
