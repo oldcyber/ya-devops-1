@@ -43,6 +43,7 @@ func (c *config) InitFromEnv() error {
 		log.Error(err)
 		return err
 	}
+	log.Info("Config after env read:", *c)
 	return nil
 }
 
@@ -61,7 +62,6 @@ func (c *config) InitFromFlags() error {
 	StoreInterval := flag.Duration("i", 0, "store interval")
 	StoreFile := flag.String("f", "", "store file")
 	flag.Parse()
-	log.Info("StoreInterval: ", *StoreInterval, " c.StoreInterval: ", c.StoreInterval)
 	if !checkEnv("ADDRESS") && *Address != "" {
 		c.Address = *Address
 	}
@@ -74,6 +74,7 @@ func (c *config) InitFromFlags() error {
 	if !checkEnv("STORE_FILE") && *StoreFile != "" {
 		c.StoreFile = *StoreFile
 	}
+	log.Info("Config after flags read:", *c)
 	return nil
 }
 
@@ -89,5 +90,5 @@ func NewConfig() *config {
 }
 
 func (c *config) PrintConfig() {
-	log.Info("Config after:", *c)
+	log.Info("Config after all init:", *c)
 }

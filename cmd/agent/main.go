@@ -9,6 +9,10 @@ import (
 
 func main() {
 	cfg := tools.NewConfig()
+	if err := cfg.InitFromEnv(); err != nil {
+		log.Error(err)
+		return
+	}
 	if err := cfg.InitFromFlags(); err != nil {
 		log.Error(err)
 		return
