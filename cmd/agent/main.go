@@ -13,7 +13,7 @@ func main() {
 		log.Error(err)
 		return
 	}
-	if err := cfg.InitFromFlags(); err != nil {
+	if err := cfg.InitFromAgentFlags(); err != nil {
 		log.Error(err)
 		return
 	}

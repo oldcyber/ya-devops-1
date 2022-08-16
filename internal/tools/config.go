@@ -60,7 +60,7 @@ func checkEnv(key string) bool {
 	}
 }
 
-func (c *config) InitFromFlags() error {
+func (c *config) InitFromServerFlags() error {
 	Address := flag.String("a", "", "address")
 	Restore := flag.Bool("r", true, "restore")
 	StoreInterval := flag.Duration("i", 0, "store interval")
@@ -77,6 +77,24 @@ func (c *config) InitFromFlags() error {
 	}
 	if !checkEnv("STORE_FILE") && *StoreFile != "" {
 		c.StoreFile = *StoreFile
+	}
+	log.Info("Config after flags read:", *c)
+	return nil
+}
+
+func (c *config) InitFromAgentFlags() error {
+	Address := flag.String("a", "", "address")
+	ReportInterval := flag.Duration("r", 0, "report interval")
+	PoolInterval := flag.Duration("p", 0, "poll interval")
+	flag.Parse()
+	if !checkEnv("ADDRESS") && *Address != "" {
+		c.Address = *Address
+	}
+	if !checkEnv("REPORT_INTERVAL") && *ReportInterval != c.ReportInterval {
+		c.ReportInterval = *ReportInterval
+	}
+	if !checkEnv("POLL_INTERVAL") && *PoolInterval != 0 {
+		c.PollInterval = *PoolInterval
 	}
 	log.Info("Config after flags read:", *c)
 	return nil

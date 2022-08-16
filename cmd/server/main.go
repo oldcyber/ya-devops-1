@@ -22,7 +22,7 @@ func main() {
 		log.Error(err)
 		return
 	}
-	if err := cfg.InitFromFlags(); err != nil {
+	if err := cfg.InitFromServerFlags(); err != nil {
 		log.Error(err)
 		return
 	}
