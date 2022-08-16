@@ -3,42 +3,45 @@ package server
 import (
 	"time"
 
-	"ya-devops-1/internal/tools"
-
+	"github.com/oldcyber/ya-devops-1/internal/tools"
 	log "github.com/sirupsen/logrus"
 )
 
-var (
-	FO  *tools.OutFile
-	err error
-)
+type config interface {
+	GetStoreFile() string
+	GetStoreInterval() time.Duration
+}
 
-func WorkWithLogs() error {
-	if tools.Conf.StoreInterval == 0 {
+//type outFile interface {
+//	OpenWriteToFile(fileName string, interval time.Duration) (file *os.File, err error)
+//}
+
+func WorkWithLogs(cfg config) error {
+	log.Info("Loading store file:", cfg.GetStoreFile(), " store interval:", cfg.GetStoreInterval())
+	f, err := tools.OpenWriteToFile(cfg.GetStoreFile(), cfg.GetStoreInterval())
+	//_, err := outFile.OpenWriteToFile(cfg.GetStoreFile(), cfg.GetStoreInterval())
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	if cfg.GetStoreInterval() == 0 {
 		log.Info("Надо писать в живую")
 		return nil
 	}
-	// timeDuration := time.NewTicker(tools.Conf.StoreInterval)
-	timer1 := time.NewTicker(tools.Conf.StoreInterval)
+
+	timer1 := time.NewTicker(cfg.GetStoreInterval())
 	defer func() {
 		timer1.Stop()
 	}()
 	for {
-		// select {
-		// case
 		<-timer1.C
 		log.Info("Start saving logs")
-		FO, err = tools.OpenWriteToFile(tools.Conf.StoreFile)
+		err = SaveLog(f)
 		if err != nil {
 			log.Error(err)
 			return err
 		}
-		err = SaveLog(FO)
-		if err != nil {
-			log.Error(err)
-			return err
-		}
-		err = tools.CloseFile(FO)
+		err = f.CloseFile()
 		if err != nil {
 			log.Error(err)
 			return err

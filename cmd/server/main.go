@@ -1,51 +1,29 @@
 package main
 
 import (
-	"flag"
 	"net/http"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
 
-	"ya-devops-1/internal/tools"
-
-	log "github.com/sirupsen/logrus"
-
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-
-	"ya-devops-1/internal/server"
+	"github.com/oldcyber/ya-devops-1/internal/server"
+	"github.com/oldcyber/ya-devops-1/internal/tools"
+	log "github.com/sirupsen/logrus"
 )
 
 func main() {
-	checkEnv := func(key string) bool {
-		_, ok := os.LookupEnv(key)
-		if !ok {
-			return false
-		} else {
-			return true
-		}
+	log.Info("Starting server")
+	log.Info("Checking environment variables")
+	cfg := tools.NewConfig()
+	if err := cfg.InitFromFlags(); err != nil {
+		log.Error(err)
+		return
 	}
-	Address := flag.String("a", "", "address")
-	Restore := flag.Bool("r", true, "restore")
-	StoreInterval := flag.Duration("i", 0, "store interval")
-	StoreFile := flag.String("f", "", "store file")
-	flag.Parse()
-	log.Info("StoreInterval: ", *StoreInterval, " tools.Conf.StoreInterval: ", tools.Conf.StoreInterval)
-	if !checkEnv("ADDRESS") && *Address != "" {
-		tools.Conf.Address = *Address
-	}
-	if !checkEnv("RESTORE") && *Restore != tools.Conf.Restore {
-		tools.Conf.Restore = *Restore
-	}
-	if !checkEnv("STORE_INTERVAL") && *StoreInterval != 0 {
-		tools.Conf.StoreInterval = *StoreInterval
-	}
-	if !checkEnv("STORE_FILE") && *StoreFile != "" {
-		tools.Conf.StoreFile = *StoreFile
-	}
-	log.Println("loading config. Address:", tools.Conf.Address, "Restore:", tools.Conf.Restore, "Store interval", tools.Conf.StoreInterval.Seconds(), "Store file", tools.Conf.StoreFile)
+	cfg.PrintConfig()
+	log.Println("loading config. Address:", cfg.Address, "Restore:", cfg.Restore, "Store interval", cfg.StoreInterval.Seconds(), "Store file", cfg.StoreFile)
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
@@ -64,20 +42,20 @@ func main() {
 	wg := new(sync.WaitGroup)
 	wg.Add(2)
 	go func() {
-		log.Error(http.ListenAndServe(tools.Conf.Address, r))
+		log.Error(http.ListenAndServe(cfg.Address, r))
 		wg.Done()
 	}()
 	go func() {
-		err := tools.Conf.Restore
-		if err {
+		err := &cfg.Restore
+		if *err {
 			err := server.ReadLogFile()
 			if err != nil {
 				log.Error(err)
 			}
 		}
 
-		if tools.Conf.StoreFile != "" {
-			err := server.WorkWithLogs()
+		if cfg.StoreFile != "" {
+			err := server.WorkWithLogs(cfg)
 			if err != nil {
 				log.Error(err)
 				return
@@ -90,10 +68,6 @@ func main() {
 	}()
 	go func() {
 		<-c
-		//err := tools.CloseFile(server.FO)
-		//if err != nil {
-		//	log.Error(err)
-		//}
 		log.Info("Shutdown server")
 		os.Exit(1)
 	}()

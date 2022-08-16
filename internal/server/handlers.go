@@ -10,18 +10,27 @@ import (
 	"strconv"
 	"strings"
 
-	"ya-devops-1/internal/tools"
+	"github.com/oldcyber/ya-devops-1/internal/tools"
 
 	"github.com/mailru/easyjson"
 
 	log "github.com/sirupsen/logrus"
 
-	"ya-devops-1/internal/data"
+	"github.com/oldcyber/ya-devops-1/internal/data"
 
 	"github.com/go-chi/chi/v5"
 )
 
-var str = data.NewstoredData()
+var (
+	str = data.NewstoredData()
+	cfg = tools.NewConfig()
+	// ci  tools.Config
+	// ofi tools.OutFileInterface
+)
+
+type outFile interface {
+	WriteToFile([]byte) error
+}
 
 // GetRoot сервер должен отдавать HTML-страничку со списком имён и значений всех известных ему на текущий момент метрик.
 func GetRoot(w http.ResponseWriter, r *http.Request) {
@@ -44,30 +53,7 @@ func GetRoot(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	} else {
-		//buf := new(bytes.Buffer)
-		//_, err := buf.ReadFrom(r.Body)
-		//if err != nil {
-		//	return
-		//}
-		//d := buf.Bytes()
 		w.Header().Set("Content-Type", "text/html")
-		//w.Header().Set("Content-Type", http.DetectContentType(d))
-		//w.Header().Set("Content-Encoding", "gzip")
-		//	f, err := os.Open("index.html")
-		//	if err != nil {
-		//		log.Error("Ошибка в Open", err)
-		//		return
-		//	}
-		//	defer f.Close()
-		//	scanner := bufio.NewScanner(f)
-		//	for scanner.Scan() {
-		//		_, err := w.Write(scanner.Bytes())
-		//		if err != nil {
-		//			log.Error("Ошибка в Write", err)
-		//			return
-		//		}
-		//	}
-		//}
 	}
 }
 
@@ -104,7 +90,6 @@ func GzipMiddleware(next http.Handler) http.Handler {
 		w.Header().Set("Content-Encoding", "gzip")
 		// передаём обработчику страницы переменную типа gzipWriter для вывода данных
 		next.ServeHTTP(gzipWriter{ResponseWriter: w, Writer: gz}, r)
-		// next.ServeHTTP(w, r)
 	})
 }
 
@@ -112,14 +97,6 @@ func GzipMiddleware(next http.Handler) http.Handler {
 func UpdateJSONMetrics(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	m := data.Metrics{}
-	//b, err := io.ReadAll(r.Body)
-	// err := easyjson.UnmarshalFromReader(r.Body, &m)
-	//if err != nil {
-	//	log.Println("Ошибка в Body", err)
-	//	return
-	//}
-	//log.Println("Полученные данные:", string(b))
-	//err = json.Unmarshal(b, &m)
 	err := easyjson.UnmarshalFromReader(r.Body, &m)
 	if err != nil {
 		log.Println("Ошибка в Unmarshall", err)
@@ -235,7 +212,8 @@ func GetJSONMetric(w http.ResponseWriter, r *http.Request) {
 // var OFile *tools.OutFile
 
 // SaveLog is a function to save log to a file
-func SaveLog(of *tools.OutFile) error {
+func SaveLog(f outFile) error {
+	// ofi := tools.NewOutFile()
 	log.Info("Start function SaveLog")
 	sdi := str.StoredDataToJSON()
 	log.Info("sdi", sdi)
@@ -246,7 +224,7 @@ func SaveLog(of *tools.OutFile) error {
 		if err != nil {
 			return err
 		}
-		err = tools.WriteToFile(of, marshal)
+		err = f.WriteToFile(marshal)
 		if err != nil {
 			log.Error(err)
 			return err
@@ -257,7 +235,8 @@ func SaveLog(of *tools.OutFile) error {
 
 func ReadLogFile() error {
 	var val string
-	fo, err := os.Open(tools.Conf.StoreFile)
+
+	fo, err := os.Open(cfg.StoreFile)
 	if err != nil {
 		log.Error(err)
 		return err

@@ -1,4 +1,4 @@
-module ya-devops-1
+module github.com/oldcyber/ya-devops-1
 
 go 1.18
 

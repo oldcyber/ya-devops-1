@@ -3,19 +3,20 @@ package agent
 import (
 	"time"
 
-	"ya-devops-1/internal/tools"
-
-	"ya-devops-1/internal/data"
+	"github.com/oldcyber/ya-devops-1/internal/data"
 )
 
-// WorkWithMetrics Начало клиента. Работа с таймерами
-func WorkWithMetrics() {
+type config interface {
+	GetPollInterval() time.Duration
+	GetReportInterval() time.Duration
+	GetAddress() string
+}
+
+func WorkWithMetrics(cfg config) error {
 	c := data.NewCounter()
 	m := data.NewMetricStore()
-	timer1 := time.NewTicker(tools.Conf.PollInterval)
-	// timer1 := time.NewTicker(2 * time.Second)
-	timer2 := time.NewTicker(tools.Conf.ReportInterval)
-	// timer2 := time.NewTicker(10 * time.Second)
+	timer1 := time.NewTicker(cfg.GetPollInterval())
+	timer2 := time.NewTicker(cfg.GetReportInterval())
 
 	defer func() {
 		timer1.Stop()
@@ -31,10 +32,8 @@ func WorkWithMetrics() {
 			for key, val := range m.GetMetrics() {
 				r[key] = float64(val)
 			}
-			// sendGaugeMetrics(r)
-			sendJSONGaugeMetrics(r)
-			// sendCounterMetrics(int64(c.Count()))
-			sendJSONCounterMetrics(int64(c.Count()))
+			sendJSONGaugeMetrics(r, cfg)
+			sendJSONCounterMetrics(int64(c.Count()), cfg)
 		}
 	}
 }
