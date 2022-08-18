@@ -14,7 +14,7 @@ import (
 //type StoredDataIface interface {
 //	AddStoredData(res []string) (bool, int)
 //	GetStoredData() *map[string]string
-//	GetStoredDataByName(mtype, mname string)
+//	GetStoredDataByName(mtype, key string)
 //	StoredDataToJSON() []Metrics
 //}
 type conf interface {
