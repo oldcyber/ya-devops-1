@@ -1,6 +1,9 @@
 package data
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -14,6 +17,9 @@ import (
 //	GetStoredDataByName(mtype, mname string)
 //	StoredDataToJSON() []Metrics
 //}
+type conf interface {
+	CountHash() string
+}
 
 type StoredType struct {
 	gauge   float64
@@ -46,7 +52,7 @@ func (s *storedData) StoreJSONToData(m Metrics) (int, []byte, error) {
 		if err != nil {
 			return http.StatusBadRequest, nil, err
 		}
-		log.Info("Записали данные в метрику", m.ID, "значение", s.data[m.ID].gauge, "хэш", m.Hash)
+		// log.Info("Записали данные в метрику", m.ID, "значение", s.data[m.ID].gauge, "хэш", m.Hash)
 		return http.StatusOK, result, nil
 	case "counter":
 		tt := s.data[m.ID].counter
@@ -57,7 +63,7 @@ func (s *storedData) StoreJSONToData(m Metrics) (int, []byte, error) {
 		if err != nil {
 			return http.StatusBadRequest, nil, err
 		}
-		log.Info("Записали данные в метрику", m.ID, "значение", s.data[m.ID].counter, "хэш", m.Hash, "прирост", *m.Delta)
+		// log.Info("Записали данные в метрику", m.ID, "значение", s.data[m.ID].counter, "хэш", m.Hash, "прирост", *m.Delta)
 		return http.StatusOK, result, nil
 	default:
 		return http.StatusBadRequest, nil, err
@@ -111,17 +117,18 @@ func (s *storedData) AddStoredData(res []string) (bool, int) {
 	}
 }
 
-func (s storedData) GetStoredDataByParamToJSON(mtype, mname, hash string) ([]byte, int) {
+func (s storedData) GetStoredDataByParamToJSON(m Metrics, key string) ([]byte, int) {
 	var out Metrics
-	var out1 Metrics
 	var result []byte
+
 	for i := range s.data {
-		if i == mname {
-			log.Info("Нашли данные по имени", mname, "которые совпадают с записью", i)
-			if mtype == "gauge" {
-				// if s.data[i].gauge != 0 {
-				log.Info("Нашли данные тип", mtype, "значение", s.data[i].gauge)
+		if i == m.ID {
+			log.Info("Нашли данные по имени", m.ID, "которые совпадают с записью", i)
+			switch m.MType {
+			case "gauge":
+				log.Info("Нашли данные тип", m.MType, "значение", s.data[i].gauge)
 				te := s.data[i].gauge
+				hash := CountHash(key, "gauge", m.ID, te, 0)
 				out = Metrics{MType: "gauge", ID: i, Value: &te, Delta: nil, Hash: hash}
 				log.Info("Преобразовали данные в метрику", out)
 				result, err := easyjson.Marshal(out)
@@ -129,27 +136,22 @@ func (s storedData) GetStoredDataByParamToJSON(mtype, mname, hash string) ([]byt
 					return nil, 400
 				}
 				return result, 200
-				//}
-			} else if mtype == "counter" {
-				// if s.data[i].counter != 0 {
-				log.Info("Нашли данные тип", mtype, "значение", s.data[i].counter)
+			case "counter":
+				log.Info("Нашли данные тип", m.MType, "значение", s.data[i].counter)
 				ce := s.data[i].counter
-				if hash == "" {
-					hash = "e m p t y  h a s h"
-				}
-				out1 = Metrics{MType: "counter", ID: i, Value: nil, Delta: &ce, Hash: hash}
+				hash := CountHash(key, "counter", m.ID, 0, ce)
+				out = Metrics{MType: "counter", ID: i, Value: nil, Delta: &ce, Hash: hash}
 				log.Info("Преобразовали данные в метрику", out)
-				result, err := easyjson.Marshal(out1)
+				result, err := easyjson.Marshal(out)
 				if err != nil {
 					log.Error(err)
 					return nil, 400
 				}
 				return result, 200
-				//}
 			}
 		}
 	}
-	log.Warn("Не нашли данные по имени", mname)
+	log.Warn("Не нашли данные по имени", m.ID)
 	return result, 404
 }
 
@@ -203,4 +205,19 @@ func contains(elems []string, v string) bool {
 		}
 	}
 	return false
+}
+
+func CountHash(key, mtype, mid string, mvalue float64, mdelta int64) string {
+	log.Info("Вычисляем хэш для метрики: ", mid, " типа: ", mtype, " mvalue: ", mvalue, " mdelta: ", mdelta)
+	var d string
+	// SHA256 hash
+	h := hmac.New(sha256.New, []byte(key))
+	switch mtype {
+	case "gauge":
+		d = fmt.Sprintf("%s:gauge:%f", mid, mvalue)
+	case "counter":
+		d = fmt.Sprintf("%s:counter:%d", mid, mdelta)
+	}
+	h.Write([]byte(d))
+	return fmt.Sprintf("%x", h.Sum(nil))
 }

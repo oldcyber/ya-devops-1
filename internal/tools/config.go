@@ -135,14 +135,13 @@ func (c *config) PrintConfig() {
 
 func (c *config) CountHash(m data.Metrics) string {
 	var d string
-	log.Info("key: ", c.GetKey())
 	// SHA256 hash
 	h := hmac.New(sha256.New, []byte(c.GetKey()))
 	switch m.MType {
 	case "gauge":
-		d = fmt.Sprintf("%s:gauge:%f", m.ID, m.Value)
+		d = fmt.Sprintf("%s:gauge:%f", m.ID, *m.Value)
 	case "counter":
-		d = fmt.Sprintf("%s:counter:%d", m.ID, m.Delta)
+		d = fmt.Sprintf("%s:counter:%d", m.ID, *m.Delta)
 	}
 	h.Write([]byte(d))
 	return fmt.Sprintf("%x", h.Sum(nil))
@@ -151,7 +150,7 @@ func (c *config) CountHash(m data.Metrics) string {
 // CheckHash Check incoming hash signature and compare it with stored hash
 func (c *config) CheckHash(m data.Metrics) bool {
 	hash := c.CountHash(m)
-	log.Info("Input hash: ", m.Hash, " new hash: ", hash)
+	// log.Info("Input hash: ", m.Hash, " new hash: ", hash)
 	if !hmac.Equal([]byte(m.Hash), []byte(hash)) {
 		log.Info("Hash is not equal")
 		return false

@@ -24,6 +24,7 @@ func (m *Metrics) SendGaugeMetrics(k, key string, v float64) []byte {
 	if key != "" {
 		// SHA256 hash
 		h := hmac.New(sha256.New, []byte(key))
+		log.Infof("converting: %s:gauge:%f", k, v)
 		h.Write([]byte(fmt.Sprintf("%s:gauge:%f", k, v)))
 		m.Hash = fmt.Sprintf("%x", h.Sum(nil))
 		log.Info("Hash gauge: ", m.Hash)
@@ -42,6 +43,7 @@ func (m *Metrics) SendCounterMetrics(c int64, key string) []byte {
 	if key != "" {
 		// SHA256 hash
 		h := hmac.New(sha256.New, []byte(key))
+		log.Infof("converting:%s:counter:%d", m.ID, c)
 		h.Write([]byte(fmt.Sprintf("%s:counter:%d", m.ID, c)))
 		m.Hash = fmt.Sprintf("%x", h.Sum(nil))
 		log.Info("Hash counter: ", m.Hash)

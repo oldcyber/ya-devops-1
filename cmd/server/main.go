@@ -34,8 +34,10 @@ func main() {
 	r.Use(middleware.Compress(5))
 	r.Use(server.GzipMiddleware)
 	r.Get("/", server.GetRoot)
-	r.Post("/update/", server.MustParams(http.HandlerFunc(server.UpdateJSONMetrics), cfg))
-	r.Post("/value/", server.GetJSONMetric)
+	r.Post("/update/", server.CheckHash(http.HandlerFunc(server.UpdateJSONMetrics), cfg))
+	// r.Post("/update/", server.CheckHash(http.HandlerFunc(server.UpdateJSONMetrics), cfg))
+	r.Post("/value/", server.GetHash(http.HandlerFunc(server.GetJSONMetric), cfg))
+	// r.Post("/value/", server.GetJSONMetric)
 	r.Post("/update/{type}/{name}/{value}", server.UpdateMetrics)
 	r.Get("/value/{type}/{name}", server.GetMetric)
 
@@ -45,8 +47,8 @@ func main() {
 	wg := new(sync.WaitGroup)
 	wg.Add(2)
 	go func() {
-		wg.Done()
 		log.Error(http.ListenAndServe(cfg.GetAddress(), r))
+		wg.Done()
 	}()
 	go func() {
 		wg.Done()
