@@ -11,6 +11,7 @@ type config interface {
 	GetReportInterval() time.Duration
 	GetAddress() string
 	GetRestore() bool
+	GetKey() string
 }
 
 func WorkWithMetrics(cfg config) error {

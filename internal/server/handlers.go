@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/mailru/easyjson"
-
+	"github.com/oldcyber/ya-devops-1/internal/tools"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/oldcyber/ya-devops-1/internal/data"
@@ -25,6 +25,11 @@ var str = data.NewstoredData() // cfg = tools.NewConfig()
 
 type outFile interface {
 	WriteToFile([]byte) error
+}
+
+type gzipWriter struct {
+	http.ResponseWriter
+	Writer io.Writer
 }
 
 // GetRoot сервер должен отдавать HTML-страничку со списком имён и значений всех известных ему на текущий момент метрик.
@@ -50,11 +55,6 @@ func GetRoot(w http.ResponseWriter, r *http.Request) {
 	} else {
 		w.Header().Set("Content-Type", "text/html")
 	}
-}
-
-type gzipWriter struct {
-	http.ResponseWriter
-	Writer io.Writer
 }
 
 func (w gzipWriter) Write(b []byte) (int, error) {
@@ -97,6 +97,14 @@ func UpdateJSONMetrics(w http.ResponseWriter, r *http.Request) {
 		log.Println("Ошибка в Unmarshall", err)
 		return
 	}
+
+	cfg := *tools.NewConfig()
+	log.Info("In handler key: ", cfg.GetKey())
+	if !cfg.CheckHash(m) {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
 	status, res, err := str.StoreJSONToData(m)
 	if err != nil {
 		w.WriteHeader(status)
@@ -190,8 +198,8 @@ func GetJSONMetric(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-
-	res, status := str.GetStoredDataByParamToJSON(typeM, nameM)
+	cfg := tools.NewConfig()
+	res, status := str.GetStoredDataByParamToJSON(typeM, nameM, cfg.CountHash(m))
 	if status != 200 {
 		w.WriteHeader(status)
 		return
@@ -256,4 +264,11 @@ func ReadLogFile(cfg config) error {
 		str.AddStoredData([]string{m.MType, m.ID, val})
 	}
 	return nil
+}
+
+func MustParams(h http.Handler, cfg config) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		cfg.GetKey()
+		h(w, r)
+	})
 }

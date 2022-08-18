@@ -8,12 +8,12 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type StoredDataIface interface {
-	AddStoredData(res []string) (bool, int)
-	GetStoredData() *map[string]string
-	GetStoredDataByName(mtype, mname string)
-	StoredDataToJSON() []Metrics
-}
+//type StoredDataIface interface {
+//	AddStoredData(res []string) (bool, int)
+//	GetStoredData() *map[string]string
+//	GetStoredDataByName(mtype, mname string)
+//	StoredDataToJSON() []Metrics
+//}
 
 type StoredType struct {
 	gauge   float64
@@ -35,29 +35,30 @@ func (s *storedData) StoreJSONToData(m Metrics) (int, []byte, error) {
 		err    error
 		result []byte
 	)
+
 	if s.data == nil {
 		s.data = map[string]StoredType{}
 	}
 	switch m.MType {
 	case "gauge":
 		s.data[m.ID] = StoredType{gauge: *m.Value, stype: m.MType}
-		out = Metrics{MType: "gauge", ID: m.ID, Value: m.Value, Delta: nil}
+		out = Metrics{MType: "gauge", ID: m.ID, Value: m.Value, Delta: nil, Hash: m.Hash}
 		result, err = easyjson.Marshal(out)
 		if err != nil {
 			return http.StatusBadRequest, nil, err
 		}
-		log.Println("Записали данные в метрику", m.ID, "значение", s.data[m.ID].gauge)
+		log.Println("Записали данные в метрику", m.ID, "значение", s.data[m.ID].gauge, "хэш", m.Hash)
 		return http.StatusOK, result, nil
 	case "counter":
 		tt := s.data[m.ID].counter
 		*m.Delta += tt
 		s.data[m.ID] = StoredType{counter: *m.Delta, stype: m.MType}
-		out = Metrics{MType: "counter", ID: m.ID, Value: nil, Delta: m.Delta}
+		out = Metrics{MType: "counter", ID: m.ID, Value: nil, Delta: m.Delta, Hash: m.Hash}
 		result, err = easyjson.Marshal(out)
 		if err != nil {
 			return http.StatusBadRequest, nil, err
 		}
-		log.Println("Записали данные в метрику", m.ID, "значение", s.data[m.ID].counter)
+		log.Println("Записали данные в метрику", m.ID, "значение", s.data[m.ID].counter, "хэш", m.Hash, "прирост", *m.Delta)
 		return http.StatusOK, result, nil
 	default:
 		return http.StatusBadRequest, nil, err
@@ -111,7 +112,7 @@ func (s *storedData) AddStoredData(res []string) (bool, int) {
 	}
 }
 
-func (s storedData) GetStoredDataByParamToJSON(mtype, mname string) ([]byte, int) {
+func (s storedData) GetStoredDataByParamToJSON(mtype, mname, hash string) ([]byte, int) {
 	var out Metrics
 	var out1 Metrics
 	var result []byte
@@ -122,7 +123,7 @@ func (s storedData) GetStoredDataByParamToJSON(mtype, mname string) ([]byte, int
 				// if s.data[i].gauge != 0 {
 				log.Println("Нашли данные тип", mtype, "значение", s.data[i].gauge)
 				te := s.data[i].gauge
-				out = Metrics{MType: "gauge", ID: i, Value: &te, Delta: nil}
+				out = Metrics{MType: "gauge", ID: i, Value: &te, Delta: nil, Hash: hash}
 				log.Println("Преобразовали данные в метрику", out)
 				result, err := easyjson.Marshal(out)
 				if err != nil {
@@ -134,7 +135,10 @@ func (s storedData) GetStoredDataByParamToJSON(mtype, mname string) ([]byte, int
 				// if s.data[i].counter != 0 {
 				log.Println("Нашли данные тип", mtype, "значение", s.data[i].counter)
 				ce := s.data[i].counter
-				out1 = Metrics{MType: "counter", ID: i, Value: nil, Delta: &ce}
+				if hash == "" {
+					hash = "e m p t y  h a s h"
+				}
+				out1 = Metrics{MType: "counter", ID: i, Value: nil, Delta: &ce, Hash: hash}
 				log.Println("Преобразовали данные в метрику", out)
 				result, err := easyjson.Marshal(out1)
 				if err != nil {

@@ -43,10 +43,10 @@ func sendJSONGaugeMetrics(m map[string]float64, cfg config) {
 	//	Инициализируем клиента
 	client := &http.Client{}
 	// проходим по метрикам и отправляем их на сервер
-	for key, val := range m {
+	for k, val := range m {
 		func() {
 			m := data.Metrics{}
-			j := m.SendGaugeMetrics(key, val)
+			j := m.SendGaugeMetrics(k, cfg.GetKey(), val)
 			// retries := 3
 			var resp *http.Response
 			// var resp *http.Response
@@ -79,7 +79,7 @@ func sendJSONCounterMetrics(c int64, cfg config) {
 	client := &http.Client{}
 	func() {
 		m := data.Metrics{}
-		j := m.SendCounterMetrics(c)
+		j := m.SendCounterMetrics(c, cfg.GetKey())
 		// retries := 3
 		var resp *http.Response
 		req, err := http.NewRequest(http.MethodPost, "http://"+cfg.GetAddress()+"/update/", bytes.NewBuffer(j))
