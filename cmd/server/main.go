@@ -27,7 +27,6 @@ func main() {
 		return
 	}
 	cfg.PrintConfig()
-	// log.Println("loading config. Address:", cfg.Address, "Restore:", cfg.Restore, "Store interval", cfg.StoreInterval.Seconds(), "Store file", cfg.StoreFile)
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
@@ -35,7 +34,7 @@ func main() {
 	r.Use(middleware.Compress(5))
 	r.Use(server.GzipMiddleware)
 	r.Get("/", server.GetRoot)
-	r.Post("/update/", server.UpdateJSONMetrics)
+	r.Post("/update/", server.MustParams(http.HandlerFunc(server.UpdateJSONMetrics), cfg))
 	r.Post("/value/", server.GetJSONMetric)
 	r.Post("/update/{type}/{name}/{value}", server.UpdateMetrics)
 	r.Get("/value/{type}/{name}", server.GetMetric)

@@ -1,11 +1,15 @@
 package tools
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
 	"flag"
+	"fmt"
 	"os"
 	"time"
 
 	"github.com/caarlos0/env/v6"
+	"github.com/oldcyber/ya-devops-1/internal/data"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -16,6 +20,7 @@ type config struct {
 	StoreInterval  time.Duration `env:"STORE_INTERVAL" envDefault:"300s"`
 	StoreFile      string        `env:"STORE_FILE" envDefault:"/tmp/devops-metrics-db.json"`
 	Restore        bool          `env:"RESTORE" envDefault:"true"`
+	Key            string        `env:"KEY" envDefault:""`
 }
 
 func (c *config) GetAddress() string {
@@ -42,6 +47,10 @@ func (c *config) GetRestore() bool {
 	return c.Restore
 }
 
+func (c *config) GetKey() string {
+	return c.Key
+}
+
 func (c *config) InitFromEnv() error {
 	if err := env.Parse(c); err != nil {
 		log.Error(err)
@@ -65,6 +74,7 @@ func (c *config) InitFromServerFlags() error {
 	Restore := flag.Bool("r", true, "restore")
 	StoreInterval := flag.Duration("i", 0, "store interval")
 	StoreFile := flag.String("f", "", "store file")
+	Key := flag.String("k", "", "key")
 	flag.Parse()
 	if !checkEnv("ADDRESS") && *Address != "" {
 		c.Address = *Address
@@ -78,6 +88,9 @@ func (c *config) InitFromServerFlags() error {
 	if !checkEnv("STORE_FILE") && *StoreFile != "" {
 		c.StoreFile = *StoreFile
 	}
+	if !checkEnv("KEY") && *Key != "" {
+		c.Key = *Key
+	}
 	log.Info("Config after flags read:", *c)
 	return nil
 }
@@ -86,6 +99,7 @@ func (c *config) InitFromAgentFlags() error {
 	Address := flag.String("a", "", "address")
 	ReportInterval := flag.Duration("r", 0, "report interval")
 	PoolInterval := flag.Duration("p", 0, "poll interval")
+	Key := flag.String("k", "", "key")
 	flag.Parse()
 	if !checkEnv("ADDRESS") && *Address != "" {
 		c.Address = *Address
@@ -95,6 +109,9 @@ func (c *config) InitFromAgentFlags() error {
 	}
 	if !checkEnv("POLL_INTERVAL") && *PoolInterval != 0 {
 		c.PollInterval = *PoolInterval
+	}
+	if !checkEnv("KEY") && *Key != "" {
+		c.Key = *Key
 	}
 	log.Info("Config after flags read:", *c)
 	return nil
@@ -108,9 +125,37 @@ func NewConfig() *config {
 		StoreInterval:  300 * time.Second,
 		StoreFile:      "/tmp/devops-metrics-db.json",
 		Restore:        true,
+		Key:            "",
 	}
 }
 
 func (c *config) PrintConfig() {
 	log.Info("Config after all init:", *c)
+}
+
+func (c *config) CountHash(m data.Metrics) string {
+	var d string
+	log.Info("key: ", c.GetKey())
+	// SHA256 hash
+	h := hmac.New(sha256.New, []byte(c.GetKey()))
+	switch m.MType {
+	case "gauge":
+		d = fmt.Sprintf("%s:gauge:%f", m.ID, m.Value)
+	case "counter":
+		d = fmt.Sprintf("%s:counter:%d", m.ID, m.Delta)
+	}
+	h.Write([]byte(d))
+	return fmt.Sprintf("%x", h.Sum(nil))
+}
+
+// CheckHash Check incoming hash signature and compare it with stored hash
+func (c *config) CheckHash(m data.Metrics) bool {
+	hash := c.CountHash(m)
+	log.Info("Input hash: ", m.Hash, " new hash: ", hash)
+	if !hmac.Equal([]byte(m.Hash), []byte(hash)) {
+		log.Info("Hash is not equal")
+		return false
+	}
+	log.Info("Hash is equal")
+	return true
 }
