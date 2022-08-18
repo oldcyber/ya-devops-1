@@ -3,6 +3,7 @@ package server
 import (
 	"time"
 
+	"github.com/oldcyber/ya-devops-1/internal/data"
 	"github.com/oldcyber/ya-devops-1/internal/tools"
 	log "github.com/sirupsen/logrus"
 )
@@ -10,6 +11,9 @@ import (
 type config interface {
 	GetStoreFile() string
 	GetStoreInterval() time.Duration
+	GetKey() string
+	CountHash(data.Metrics) string
+	CheckHash(data.Metrics) bool
 }
 
 //type outFile interface {
@@ -44,6 +48,4 @@ func WorkWithLogs(cfg config) error {
 		}
 		log.Info("Log file saved")
 	}
-
-	//}
 }
