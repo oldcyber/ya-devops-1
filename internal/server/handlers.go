@@ -267,10 +267,11 @@ func CheckHash(h http.Handler, cfg config) http.HandlerFunc {
 			log.Error("Ошибка в Unmarshall", err)
 			return
 		}
-
-		if !cfg.CheckHash(m) {
-			w.WriteHeader(http.StatusBadRequest)
-			return
+		if m.Hash != "" {
+			if !cfg.CheckHash(m) {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
 		}
 
 		status, res, err := str.StoreJSONToData(m)
