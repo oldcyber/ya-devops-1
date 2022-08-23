@@ -21,6 +21,7 @@ type config struct {
 	StoreFile      string        `env:"STORE_FILE" envDefault:"/tmp/devops-metrics-db.json"`
 	Restore        bool          `env:"RESTORE" envDefault:"true"`
 	Key            string        `env:"KEY" envDefault:""`
+	DatabaseDSN    string        `env:"DATABASE_DSN" envDefault:"postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable"`
 }
 
 func (c *config) GetAddress() string {
@@ -51,6 +52,10 @@ func (c *config) GetKey() string {
 	return c.Key
 }
 
+func (c *config) GetDatabaseDSN() string {
+	return c.DatabaseDSN
+}
+
 func (c *config) InitFromEnv() error {
 	if err := env.Parse(c); err != nil {
 		log.Error(err)
@@ -75,6 +80,7 @@ func (c *config) InitFromServerFlags() error {
 	StoreInterval := flag.Duration("i", 0, "store interval")
 	StoreFile := flag.String("f", "", "store file")
 	Key := flag.String("k", "", "key")
+	DatabaseDSN := flag.String("d", "", "database dsn")
 	flag.Parse()
 	if !checkEnv("ADDRESS") && *Address != "" {
 		c.Address = *Address
@@ -90,6 +96,9 @@ func (c *config) InitFromServerFlags() error {
 	}
 	if !checkEnv("KEY") && *Key != "" {
 		c.Key = *Key
+	}
+	if !checkEnv("DATABASE_DSN") && *DatabaseDSN != "" {
+		c.DatabaseDSN = *DatabaseDSN
 	}
 	log.Info("Config after flags read:", *c)
 	return nil

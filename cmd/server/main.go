@@ -14,6 +14,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// var DBPool *pgxpool.Pool
+
 func main() {
 	log.Info("Starting server")
 	log.Info("Checking environment variables")
@@ -33,6 +35,7 @@ func main() {
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Compress(5))
 	r.Use(server.GzipMiddleware)
+	r.Get("/ping", server.GetPing(http.HandlerFunc(server.Ping), cfg))
 	r.Get("/", server.GetRoot)
 	r.Post("/update/", server.CheckHash(http.HandlerFunc(server.UpdateJSONMetrics), cfg))
 	// r.Post("/update/", server.CheckHash(http.HandlerFunc(server.UpdateJSONMetrics), cfg))

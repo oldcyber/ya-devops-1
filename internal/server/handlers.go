@@ -3,6 +3,7 @@ package server
 import (
 	"bufio"
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/mailru/easyjson"
+	"github.com/oldcyber/ya-devops-1/internal/tools"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/oldcyber/ya-devops-1/internal/data"
@@ -29,6 +31,28 @@ type outFile interface {
 type gzipWriter struct {
 	http.ResponseWriter
 	Writer io.Writer
+}
+
+// Ping при запросе проверяет соединение с базой данных.
+// При успешной проверке хендлер должен вернуть HTTP-статус 200 OK, при неуспешной — 500 Internal Server Error.
+func Ping(w http.ResponseWriter, r *http.Request) {
+}
+
+func GetPing(h http.Handler, cfg config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		dbpool, err := tools.DBConnect(cfg.GetDatabaseDSN())
+		if err != nil {
+			return
+		}
+		err = tools.Ping(context.Background(), dbpool)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+
+		h.ServeHTTP(w, r)
+	}
 }
 
 // GetRoot сервер должен отдавать HTML-страничку со списком имён и значений всех известных ему на текущий момент метрик.

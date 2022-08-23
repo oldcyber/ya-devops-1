@@ -11,15 +11,9 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-//type StoredDataIface interface {
-//	AddStoredData(res []string) (bool, int)
-//	GetStoredData() *map[string]string
-//	GetStoredDataByName(mtype, key string)
-//	StoredDataToJSON() []Metrics
+//type conf interface {
+//	CountHash() string
 //}
-type conf interface {
-	CountHash() string
-}
 
 type StoredType struct {
 	gauge   float64

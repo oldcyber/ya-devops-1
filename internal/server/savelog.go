@@ -14,6 +14,7 @@ type config interface {
 	GetKey() string
 	CountHash(data.Metrics) string
 	CheckHash(data.Metrics) bool
+	GetDatabaseDSN() string
 }
 
 //type outFile interface {
