@@ -3,7 +3,6 @@ package server
 import (
 	"bufio"
 	"compress/gzip"
-	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -36,15 +35,18 @@ type gzipWriter struct {
 // Ping при запросе проверяет соединение с базой данных.
 // При успешной проверке хендлер должен вернуть HTTP-статус 200 OK, при неуспешной — 500 Internal Server Error.
 func Ping(w http.ResponseWriter, r *http.Request) {
+	// --------------------------------------------------------------
 }
 
 func GetPing(h http.Handler, cfg config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		dbpool, err := tools.DBConnect(cfg.GetDatabaseDSN())
+		dbpool, err := tools.DBConnect(cfg.GetDatabaseDSN(), r.Context())
 		if err != nil {
 			return
 		}
-		err = tools.Ping(context.Background(), dbpool)
+		defer dbpool.Close()
+		err = dbpool.Ping()
+		// err = tools.Ping(r.Context())
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return

@@ -21,7 +21,7 @@ type config struct {
 	StoreFile      string        `env:"STORE_FILE" envDefault:"/tmp/devops-metrics-db.json"`
 	Restore        bool          `env:"RESTORE" envDefault:"true"`
 	Key            string        `env:"KEY" envDefault:""`
-	DatabaseDSN    string        `env:"DATABASE_DSN" envDefault:"postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable"`
+	DatabaseDSN    string        `env:"DATABASE_DSN" envDefault:"postgres://postgres@host.docker.internal:55001/praktikum?sslmode=disable"`
 }
 
 func (c *config) GetAddress() string {

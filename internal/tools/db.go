@@ -2,8 +2,10 @@ package tools
 
 import (
 	"context"
+	"database/sql"
+	"time"
 
-	"github.com/jackc/pgx/v4/pgxpool"
+	_ "github.com/lib/pq"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -11,24 +13,36 @@ import (
 //	GetDatabaseDSN() string
 //}
 
-func DBConnect(conn string) (*pgxpool.Pool, error) {
-	var err error
-	dbPool, err := pgxpool.Connect(context.Background(), conn)
+// var db *sql.DB
+
+func DBConnect(conn string, ctx context.Context) (*sql.DB, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	conn = conn + "&connect_timeout=10"
+	log.Info("Connecting to database:", conn)
+	db, err := sql.Open("postgres", conn)
 	if err != nil {
 		log.Error(err)
 		return nil, err
 	}
-	defer dbPool.Close()
-	return dbPool, nil
+	// defer dbPool.Close()
+	return db, nil
 }
 
 // db ping
-func Ping(ctx context.Context, dbpool *pgxpool.Pool) error {
-	var err error
-	_, err = dbpool.Exec(ctx, "SELECT 1")
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-	return nil
-}
+//func Ping(ctx context.Context) error {
+//	var err error
+//	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+//	defer cancel()
+//
+//	_, err = db.ExecContext(ctx, "SELECT pg_sleep(10)")
+//	log.Error(err)
+//	return err
+
+//_, err = db.Exec("SELECT 1")
+//if err != nil {
+//	log.Error(err)
+//	return err
+//}
+//return nil
+//}
