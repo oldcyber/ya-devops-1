@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/mailru/easyjson"
-
+	"github.com/oldcyber/ya-devops-1/internal/tools"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/oldcyber/ya-devops-1/internal/data"
@@ -25,6 +25,36 @@ var str = data.NewstoredData() // cfg = tools.NewConfig()
 
 type outFile interface {
 	WriteToFile([]byte) error
+}
+
+type gzipWriter struct {
+	http.ResponseWriter
+	Writer io.Writer
+}
+
+// Ping при запросе проверяет соединение с базой данных.
+// При успешной проверке хендлер должен вернуть HTTP-статус 200 OK, при неуспешной — 500 Internal Server Error.
+func Ping(w http.ResponseWriter, r *http.Request) {
+	// --------------------------------------------------------------
+}
+
+func GetPing(h http.Handler, cfg config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		dbpool, err := tools.DBConnect(cfg.GetDatabaseDSN(), r.Context())
+		if err != nil {
+			return
+		}
+		defer dbpool.Close()
+		err = dbpool.Ping()
+		// err = tools.Ping(r.Context())
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+
+		h.ServeHTTP(w, r)
+	}
 }
 
 // GetRoot сервер должен отдавать HTML-страничку со списком имён и значений всех известных ему на текущий момент метрик.
@@ -50,11 +80,6 @@ func GetRoot(w http.ResponseWriter, r *http.Request) {
 	} else {
 		w.Header().Set("Content-Type", "text/html")
 	}
-}
-
-type gzipWriter struct {
-	http.ResponseWriter
-	Writer io.Writer
 }
 
 func (w gzipWriter) Write(b []byte) (int, error) {
@@ -90,31 +115,32 @@ func GzipMiddleware(next http.Handler) http.Handler {
 
 // UpdateJSONMetrics читаем JSON из URL и сохраняем
 func UpdateJSONMetrics(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	m := data.Metrics{}
-	err := easyjson.UnmarshalFromReader(r.Body, &m)
-	if err != nil {
-		log.Println("Ошибка в Unmarshall", err)
-		return
-	}
-	status, res, err := str.StoreJSONToData(m)
-	if err != nil {
-		w.WriteHeader(status)
-		_, err = w.Write(res)
-		if err != nil {
-			log.Println("Ошибка в Write", err)
-			return
-		}
-		log.Println(err)
-		return
-	} else {
-		w.WriteHeader(status)
-		_, err = w.Write(res)
-		if err != nil {
-			log.Println("Ошибка в Write", err)
-			return
-		}
-	}
+	//w.Header().Set("Content-Type", "application/json")
+	//m := data.Metrics{}
+	//err := easyjson.UnmarshalFromReader(r.Body, &m)
+	//if err != nil {
+	//	log.Error("Ошибка в Unmarshall 2 ", err)
+	//	return
+	//}
+	//
+	//status, res, err := str.StoreJSONToData(m)
+	//if err != nil {
+	//	w.WriteHeader(status)
+	//	_, err = w.Write(res)
+	//	if err != nil {
+	//		log.Error("Ошибка в Write", err)
+	//		return
+	//	}
+	//	log.Error(err)
+	//	return
+	//} else {
+	//	w.WriteHeader(status)
+	//	_, err = w.Write(res)
+	//	if err != nil {
+	//		log.Error("Ошибка в Write", err)
+	//		return
+	//	}
+	//}
 }
 
 // UpdateMetrics читаем данные из URL и сохраняем
@@ -172,36 +198,35 @@ func GetMetric(w http.ResponseWriter, r *http.Request) {
 // в текстовом виде по запросу GET
 // http://<АДРЕС_СЕРВЕРА>/value/{JSON}
 func GetJSONMetric(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	var m data.Metrics
-	err := json.NewDecoder(r.Body).Decode(&m)
-	if err != nil {
-		return
-	}
-	log.Info(m.ID, m.MType)
-	typeM := m.MType
-	nameM := m.ID
-	if typeM != "gauge" && typeM != "counter" {
-		w.WriteHeader(http.StatusNotFound)
-		_, err := w.Write([]byte("Нет такого типа метрики"))
-		if err != nil {
-			log.Error(err)
-			return
-		}
-		return
-	}
-
-	res, status := str.GetStoredDataByParamToJSON(typeM, nameM)
-	if status != 200 {
-		w.WriteHeader(status)
-		return
-	}
-	log.Println(string(res))
-	_, err = w.Write(res)
-	if err != nil {
-		log.Error("Ошибка в Write", err)
-		return
-	}
+	//w.Header().Set("Content-Type", "application/json")
+	//var m data.Metrics
+	//err := json.NewDecoder(r.Body).Decode(&m)
+	//if err != nil {
+	//	return
+	//}
+	//log.Info(m.ID, m.MType)
+	//typeM := m.MType
+	//if typeM != "gauge" && typeM != "counter" {
+	//	w.WriteHeader(http.StatusNotFound)
+	//	_, err := w.Write([]byte("Нет такого типа метрики"))
+	//	if err != nil {
+	//		log.Error(err)
+	//		return
+	//	}
+	//	return
+	//}
+	//
+	//res, status := str.GetStoredDataByParamToJSON(m)
+	//if status != 200 {
+	//	w.WriteHeader(status)
+	//	return
+	//}
+	//log.Info(string(res))
+	//_, err = w.Write(res)
+	//if err != nil {
+	//	log.Error("Ошибка в Write", err)
+	//	return
+	//}
 }
 
 // var OFile *tools.OutFile
@@ -245,15 +270,90 @@ func ReadLogFile(cfg config) error {
 			log.Error(err)
 			return err
 		}
-		if m.MType == "gauge" {
+		switch {
+		case m.MType == "gauge":
 			val = strconv.FormatFloat(*m.Value, 'f', -1, 64)
-		} else if m.MType == "counter" {
+		case m.MType == "counter":
 			val = strconv.FormatInt(*m.Delta, 10)
-		} else {
+		default:
 			log.Error("Нет такого типа метрики")
 			return err
 		}
 		str.AddStoredData([]string{m.MType, m.ID, val})
 	}
 	return nil
+}
+
+func CheckHash(h http.Handler, cfg config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		m := data.Metrics{}
+		err := easyjson.UnmarshalFromReader(r.Body, &m)
+		if err != nil {
+			log.Error("Ошибка в Unmarshall", err)
+			return
+		}
+		if m.Hash != "" {
+			if !cfg.CheckHash(m) {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+		}
+
+		status, res, err := str.StoreJSONToData(m)
+		if err != nil {
+			w.WriteHeader(status)
+			_, err = w.Write(res)
+			if err != nil {
+				log.Error("Ошибка в Write", err)
+				return
+			}
+			log.Error(err)
+			return
+		} else {
+			w.WriteHeader(status)
+			_, err = w.Write(res)
+			if err != nil {
+				log.Error("Ошибка в Write", err)
+				return
+			}
+		}
+		h.ServeHTTP(w, r)
+	}
+}
+
+func GetHash(h http.Handler, cfg config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		var m data.Metrics
+		err := json.NewDecoder(r.Body).Decode(&m)
+		if err != nil {
+			return
+		}
+		typeM := m.MType
+		if typeM != "gauge" && typeM != "counter" {
+			w.WriteHeader(http.StatusNotFound)
+			_, err := w.Write([]byte("Нет такого типа метрики"))
+			if err != nil {
+				log.Error(err)
+				return
+			}
+			return
+		}
+
+		res, status := str.GetStoredDataByParamToJSON(m, cfg.GetKey())
+		if status != 200 {
+			w.WriteHeader(status)
+			return
+		}
+		log.Info(string(res))
+		_, err = w.Write(res)
+		if err != nil {
+			log.Error("Ошибка в Write", err)
+			return
+		}
+
+		h.ServeHTTP(w, r)
+		// h(w, r)
+	}
 }
