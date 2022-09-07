@@ -46,6 +46,18 @@ func main() {
 
 	c := make(chan os.Signal)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	// Create DB
+	db, err := tools.DBConnect(cfg.GetDatabaseDSN())
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	defer db.Close()
+	err = tools.CreateTable(db)
+	if err != nil {
+		log.Error(err)
+		return
+	}
 
 	wg := new(sync.WaitGroup)
 	wg.Add(2)

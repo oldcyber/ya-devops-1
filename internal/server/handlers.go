@@ -14,12 +14,16 @@ import (
 	"github.com/oldcyber/ya-devops-1/internal/tools"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/oldcyber/ya-devops-1/internal/data"
+	"github.com/oldcyber/ya-devops-1/internal/mydata"
 
 	"github.com/go-chi/chi/v5"
 )
 
-var str = data.NewstoredData() // cfg = tools.NewConfig()
+var (
+	str   = mydata.NewstoredData() // cfg = tools.NewConfig()
+	dbstr = mydata.NewDBData()
+)
+
 // ci  tools.Config
 // ofi tools.OutFileInterface
 
@@ -34,18 +38,18 @@ type gzipWriter struct {
 
 // Ping при запросе проверяет соединение с базой данных.
 // При успешной проверке хендлер должен вернуть HTTP-статус 200 OK, при неуспешной — 500 Internal Server Error.
-func Ping(w http.ResponseWriter, r *http.Request) {
+func Ping(_ http.ResponseWriter, _ *http.Request) {
 	// --------------------------------------------------------------
 }
 
 func GetPing(h http.Handler, cfg config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		dbpool, err := tools.DBConnect(cfg.GetDatabaseDSN(), r.Context())
+		db, err := tools.DBConnect(cfg.GetDatabaseDSN())
 		if err != nil {
 			return
 		}
-		defer dbpool.Close()
-		err = dbpool.Ping()
+		defer db.Close()
+		err = db.Ping()
 		// err = tools.Ping(r.Context())
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -114,9 +118,9 @@ func GzipMiddleware(next http.Handler) http.Handler {
 }
 
 // UpdateJSONMetrics читаем JSON из URL и сохраняем
-func UpdateJSONMetrics(w http.ResponseWriter, r *http.Request) {
+func UpdateJSONMetrics(_ http.ResponseWriter, _ *http.Request) {
 	//w.Header().Set("Content-Type", "application/json")
-	//m := data.Metrics{}
+	//m := mydata.Metrics{}
 	//err := easyjson.UnmarshalFromReader(r.Body, &m)
 	//if err != nil {
 	//	log.Error("Ошибка в Unmarshall 2 ", err)
@@ -197,9 +201,9 @@ func GetMetric(w http.ResponseWriter, r *http.Request) {
 // GetJSONMetric должен возвращать текущее значение запрашиваемой метрики
 // в текстовом виде по запросу GET
 // http://<АДРЕС_СЕРВЕРА>/value/{JSON}
-func GetJSONMetric(w http.ResponseWriter, r *http.Request) {
+func GetJSONMetric(_ http.ResponseWriter, _ *http.Request) {
 	//w.Header().Set("Content-Type", "application/json")
-	//var m data.Metrics
+	//var m mydata.Metrics
 	//err := json.NewDecoder(r.Body).Decode(&m)
 	//if err != nil {
 	//	return
@@ -264,7 +268,7 @@ func ReadLogFile(cfg config) error {
 
 	scanner := bufio.NewScanner(fo)
 	for scanner.Scan() {
-		var m data.Metrics
+		var m mydata.Metrics
 		err := json.Unmarshal([]byte(scanner.Text()), &m)
 		if err != nil {
 			log.Error(err)
@@ -287,8 +291,16 @@ func ReadLogFile(cfg config) error {
 func CheckHash(h http.Handler, cfg config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		m := data.Metrics{}
-		err := easyjson.UnmarshalFromReader(r.Body, &m)
+		// Работа с БД
+		db, err := tools.DBConnect(cfg.GetDatabaseDSN())
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		defer db.Close()
+
+		m := mydata.Metrics{}
+		err = easyjson.UnmarshalFromReader(r.Body, &m)
 		if err != nil {
 			log.Error("Ошибка в Unmarshall", err)
 			return
@@ -299,8 +311,8 @@ func CheckHash(h http.Handler, cfg config) http.HandlerFunc {
 				return
 			}
 		}
-
-		status, res, err := str.StoreJSONToData(m)
+		status, res, err := dbstr.StoreJSONToDB(db, m)
+		// status, res, err := str.StoreJSONToData(m)
 		if err != nil {
 			w.WriteHeader(status)
 			_, err = w.Write(res)
@@ -325,8 +337,16 @@ func CheckHash(h http.Handler, cfg config) http.HandlerFunc {
 func GetHash(h http.Handler, cfg config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		var m data.Metrics
-		err := json.NewDecoder(r.Body).Decode(&m)
+		// Работа с БД
+		db, err := tools.DBConnect(cfg.GetDatabaseDSN())
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		defer db.Close()
+
+		var m mydata.Metrics
+		err = json.NewDecoder(r.Body).Decode(&m)
 		if err != nil {
 			return
 		}
@@ -341,7 +361,7 @@ func GetHash(h http.Handler, cfg config) http.HandlerFunc {
 			return
 		}
 
-		res, status := str.GetStoredDataByParamToJSON(m, cfg.GetKey())
+		res, status := dbstr.GetStoredDBByParamToJSON(db, m, cfg.GetKey())
 		if status != 200 {
 			w.WriteHeader(status)
 			return

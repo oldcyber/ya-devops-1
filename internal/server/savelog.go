@@ -3,7 +3,7 @@ package server
 import (
 	"time"
 
-	"github.com/oldcyber/ya-devops-1/internal/data"
+	"github.com/oldcyber/ya-devops-1/internal/mydata"
 	"github.com/oldcyber/ya-devops-1/internal/tools"
 	log "github.com/sirupsen/logrus"
 )
@@ -12,10 +12,14 @@ type config interface {
 	GetStoreFile() string
 	GetStoreInterval() time.Duration
 	GetKey() string
-	CountHash(data.Metrics) string
-	CheckHash(data.Metrics) bool
+	CountHash(mydata.Metrics) string
+	CheckHash(mydata.Metrics) bool
 	GetDatabaseDSN() string
 }
+
+//type dbStoreData interface {
+//	StoreJSONToDB(*sql.DB, mydata.Metrics) (int, []byte, error)
+//}
 
 //type outFile interface {
 //	OpenWriteToFile(fileName string, interval time.Duration) (file *os.File, err error)

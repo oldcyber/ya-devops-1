@@ -1,8 +1,9 @@
-package data
+package mydata
 
 import (
 	"crypto/hmac"
 	"crypto/sha256"
+	"database/sql"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -10,10 +11,6 @@ import (
 	"github.com/mailru/easyjson"
 	log "github.com/sirupsen/logrus"
 )
-
-//type conf interface {
-//	CountHash() string
-//}
 
 type StoredType struct {
 	gauge   float64
@@ -27,6 +24,70 @@ type storedData struct {
 
 func NewstoredData() *storedData {
 	return &storedData{}
+}
+
+func NewDBData() *dbStoreData {
+	return &dbStoreData{}
+}
+
+// store JSON to DB
+func (s dbStoreData) StoreJSONToDB(db *sql.DB, m Metrics) (int, []byte, error) {
+	res := FindStoreDataItem(db, m.ID)
+	log.Info("Search result: ", res)
+	switch res {
+	case false:
+		// Запись не найдена - создаём новую запись
+		err := s.CreateStoreDataItem(db, m)
+		if err != nil {
+			log.Error(err)
+			return 0, nil, err
+		}
+	case true:
+		// Запись найдена - обновляем значение
+		err := s.UpdateStoreDataItem(db, m)
+		if err != nil {
+			log.Error(err)
+			return 0, nil, err
+		}
+	}
+	return http.StatusOK, nil, nil
+}
+
+func (d dbStoreData) GetStoredDBByParamToJSON(db *sql.DB, m Metrics, key string) ([]byte, int) {
+	var out Metrics
+	var result []byte
+	item, err := d.GetStoreDataItem(db, m.ID, m.MType)
+	if err != nil {
+		return nil, 0
+	}
+	switch m.MType {
+	case "gauge":
+		log.Info("Нашли данные тип", m.MType, "значение", item.MetricGauge)
+		te := item.MetricGauge.Float64
+		hash := CountHash(key, "gauge", m.ID, te, 0)
+		out = Metrics{MType: "gauge", ID: item.MetricName, Value: &te, Delta: nil, Hash: hash}
+		log.Info("Преобразовали данные в метрику", out)
+		result, err := easyjson.Marshal(out)
+		if err != nil {
+			return nil, 400
+		}
+		return result, 200
+	case "counter":
+		log.Info("Нашли данные тип", m.MType, "значение", item.MetricCounter)
+		ce := item.MetricCounter.Int64
+		hash := CountHash(key, "counter", m.ID, 0, ce)
+		out = Metrics{MType: "counter", ID: item.MetricName, Value: nil, Delta: &ce, Hash: hash}
+		log.Info("Преобразовали данные в метрику", out)
+		result, err := easyjson.Marshal(out)
+		if err != nil {
+			log.Error(err)
+			return nil, 400
+		}
+		return result, 200
+	}
+
+	log.Warn("Не нашли данные по имени", m.ID)
+	return result, 404
 }
 
 func (s *storedData) StoreJSONToData(m Metrics) (int, []byte, error) {
@@ -46,7 +107,7 @@ func (s *storedData) StoreJSONToData(m Metrics) (int, []byte, error) {
 		if err != nil {
 			return http.StatusBadRequest, nil, err
 		}
-		// log.Info("Записали данные в метрику", m.ID, "значение", s.data[m.ID].gauge, "хэш", m.Hash)
+		// log.Info("Записали данные в метрику", m.ID, "значение", s.mydata[m.ID].gauge, "хэш", m.Hash)
 		return http.StatusOK, result, nil
 	case "counter":
 		tt := s.data[m.ID].counter
@@ -57,7 +118,7 @@ func (s *storedData) StoreJSONToData(m Metrics) (int, []byte, error) {
 		if err != nil {
 			return http.StatusBadRequest, nil, err
 		}
-		// log.Info("Записали данные в метрику", m.ID, "значение", s.data[m.ID].counter, "хэш", m.Hash, "прирост", *m.Delta)
+		// log.Info("Записали данные в метрику", m.ID, "значение", s.mydata[m.ID].counter, "хэш", m.Hash, "прирост", *m.Delta)
 		return http.StatusOK, result, nil
 	default:
 		return http.StatusBadRequest, nil, err
@@ -93,7 +154,7 @@ func (s *storedData) AddStoredData(res []string) (bool, int) {
 		tt.stype = res[0]
 		s.data[res[1]] = tt
 		log.Info("Записали данные в метрику", res[1], "значение", g)
-		// s.data[res[1]] = StoredType{gauge: g}
+		// s.mydata[res[1]] = StoredType{gauge: g}
 		return true, 200
 	case "counter":
 		c, err := strconv.ParseInt(res[2], 10, 64)
@@ -179,7 +240,7 @@ func (s storedData) GetStoredData() map[string]string {
 }
 
 func (s storedData) GetStoredDataByName(mtype, mname string) (string, int) {
-	log.Info("s.data", s.data)
+	log.Info("s.mydata", s.data)
 	for i := range s.data {
 		if i == mname {
 			if mtype == "gauge" {

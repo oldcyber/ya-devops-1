@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/oldcyber/ya-devops-1/internal/data"
+	"github.com/oldcyber/ya-devops-1/internal/mydata"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -45,7 +45,7 @@ func sendJSONGaugeMetrics(m map[string]float64, cfg config) {
 	// проходим по метрикам и отправляем их на сервер
 	for k, val := range m {
 		func() {
-			m := data.Metrics{}
+			m := mydata.Metrics{}
 			j := m.SendGaugeMetrics(k, cfg.GetKey(), val)
 			// retries := 3
 			var resp *http.Response
@@ -78,7 +78,7 @@ func sendJSONCounterMetrics(c int64, cfg config) {
 	//	Инициализируем клиента
 	client := &http.Client{}
 	func() {
-		m := data.Metrics{}
+		m := mydata.Metrics{}
 		j := m.SendCounterMetrics(c, cfg.GetKey())
 		// retries := 3
 		var resp *http.Response

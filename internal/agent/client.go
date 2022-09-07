@@ -3,7 +3,7 @@ package agent
 import (
 	"time"
 
-	"github.com/oldcyber/ya-devops-1/internal/data"
+	"github.com/oldcyber/ya-devops-1/internal/mydata"
 )
 
 type config interface {
@@ -15,8 +15,8 @@ type config interface {
 }
 
 func WorkWithMetrics(cfg config) error {
-	c := data.NewCounter()
-	m := data.NewMetricStore()
+	c := mydata.NewCounter()
+	m := mydata.NewMetricStore()
 	timer1 := time.NewTicker(cfg.GetPollInterval())
 	timer2 := time.NewTicker(cfg.GetReportInterval())
 

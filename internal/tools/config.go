@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/caarlos0/env/v6"
-	"github.com/oldcyber/ya-devops-1/internal/data"
+	"github.com/oldcyber/ya-devops-1/internal/mydata"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -21,7 +21,7 @@ type config struct {
 	StoreFile      string        `env:"STORE_FILE" envDefault:"/tmp/devops-metrics-db.json"`
 	Restore        bool          `env:"RESTORE" envDefault:"true"`
 	Key            string        `env:"KEY" envDefault:""`
-	DatabaseDSN    string        `env:"DATABASE_DSN" envDefault:"postgres://postgres@host.docker.internal:55001/praktikum?sslmode=disable"`
+	DatabaseDSN    string        `env:"DATABASE_DSN" envDefault:"postgres://postgres:postgrespw@localhost:55001/praktikum?sslmode=disable"`
 }
 
 func (c *config) GetAddress() string {
@@ -142,7 +142,7 @@ func (c *config) PrintConfig() {
 	log.Info("Config after all init:", *c)
 }
 
-func (c *config) CountHash(m data.Metrics) string {
+func (c *config) CountHash(m mydata.Metrics) string {
 	var d string
 	// SHA256 hash
 	h := hmac.New(sha256.New, []byte(c.GetKey()))
@@ -157,7 +157,7 @@ func (c *config) CountHash(m data.Metrics) string {
 }
 
 // CheckHash Check incoming hash signature and compare it with stored hash
-func (c *config) CheckHash(m data.Metrics) bool {
+func (c *config) CheckHash(m mydata.Metrics) bool {
 	hash := c.CountHash(m)
 	// log.Info("Input hash: ", m.Hash, " new hash: ", hash)
 	if !hmac.Equal([]byte(m.Hash), []byte(hash)) {
