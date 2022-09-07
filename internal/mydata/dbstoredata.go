@@ -72,8 +72,8 @@ func (ms *dbStoreData) GetStoreDataItem(db *sql.DB, metricName, metricType strin
 //}
 
 func FindStoreDataItem(db *sql.DB, metricName string) bool {
-	var storeData dbStoreData
-	err := db.QueryRow("SELECT * FROM metrics WHERE metric_name = $1", metricName).Scan(&storeData.MetricName, &storeData.MetricType, &storeData.MetricGauge, &storeData.MetricCounter)
+	var ms dbStoreData
+	err := db.QueryRow("SELECT * FROM metrics WHERE metric_name = $1", metricName).Scan(&ms.MetricName, &ms.MetricType, &ms.MetricGauge, &ms.MetricCounter)
 	if err != nil {
 		log.Error(err)
 		return false

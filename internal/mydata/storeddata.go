@@ -31,20 +31,20 @@ func NewDBData() *dbStoreData {
 }
 
 // store JSON to DB
-func (s dbStoreData) StoreJSONToDB(db *sql.DB, m Metrics) (int, []byte, error) {
+func (ms dbStoreData) StoreJSONToDB(db *sql.DB, m Metrics) (int, []byte, error) {
 	res := FindStoreDataItem(db, m.ID)
 	log.Info("Search result: ", res)
 	switch res {
 	case false:
 		// Запись не найдена - создаём новую запись
-		err := s.CreateStoreDataItem(db, m)
+		err := ms.CreateStoreDataItem(db, m)
 		if err != nil {
 			log.Error(err)
 			return 0, nil, err
 		}
 	case true:
 		// Запись найдена - обновляем значение
-		err := s.UpdateStoreDataItem(db, m)
+		err := ms.UpdateStoreDataItem(db, m)
 		if err != nil {
 			log.Error(err)
 			return 0, nil, err
@@ -53,10 +53,10 @@ func (s dbStoreData) StoreJSONToDB(db *sql.DB, m Metrics) (int, []byte, error) {
 	return http.StatusOK, nil, nil
 }
 
-func (d dbStoreData) GetStoredDBByParamToJSON(db *sql.DB, m Metrics, key string) ([]byte, int) {
+func (ms dbStoreData) GetStoredDBByParamToJSON(db *sql.DB, m Metrics, key string) ([]byte, int) {
 	var out Metrics
 	var result []byte
-	item, err := d.GetStoreDataItem(db, m.ID, m.MType)
+	item, err := ms.GetStoreDataItem(db, m.ID, m.MType)
 	if err != nil {
 		return nil, 0
 	}
