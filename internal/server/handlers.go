@@ -320,7 +320,8 @@ func CheckHash(h http.Handler, cfg config) http.HandlerFunc {
 		m := mydata.Metrics{}
 		err = easyjson.UnmarshalFromReader(r.Body, &m)
 		if err != nil {
-			log.Error("Ошибка в Unmarshall", err)
+			log.Error("Ошибка в Unmarshall: ", err)
+			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 		if m.Hash != "" {

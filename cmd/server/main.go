@@ -51,13 +51,20 @@ func main() {
 	if err != nil {
 		log.Error(err)
 		// return
+	} else {
+		err = tools.CreateTable(db)
+		if err != nil {
+			log.Error(err)
+			// return
+		}
 	}
 	defer db.Close()
-	err = tools.CreateTable(db)
-	if err != nil {
-		log.Error(err)
-		// return
-	}
+	cfg.DatabaseDSN = ""
+	//err = tools.CreateTable(db)
+	//if err != nil {
+	//	log.Error(err)
+	//	// return
+	//}
 
 	wg := new(sync.WaitGroup)
 	wg.Add(2)

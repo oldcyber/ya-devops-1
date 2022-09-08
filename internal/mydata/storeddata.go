@@ -263,25 +263,24 @@ func (s storedData) GetStoredDataByParamToJSON(m Metrics, key string) ([]byte, i
 
 	for i := range s.data {
 		if i == m.ID {
-			log.Info("Нашли данные по имени", m.ID, "которые совпадают с записью", i)
-			switch m.MType {
-			case "gauge":
-				log.Info("Нашли данные тип", m.MType, "значение", s.data[i].gauge)
+			log.Info("Нашли данные по имени ", m.ID, " которые совпадают с записью ", i)
+			if m.MType == "gauge" {
+				log.Info("Нашли данные тип ", m.MType, "значение ", s.data[i].gauge)
 				te := s.data[i].gauge
 				hash := CountHash(key, "gauge", m.ID, te, 0)
 				out = Metrics{MType: "gauge", ID: i, Value: &te, Delta: nil, Hash: hash}
-				log.Info("Преобразовали данные в метрику", out)
+				log.Info("Преобразовали данные в метрику ", out)
 				result, err := easyjson.Marshal(out)
 				if err != nil {
 					return nil, 400
 				}
 				return result, 200
-			case "counter":
-				log.Info("Нашли данные тип", m.MType, "значение", s.data[i].counter)
+			} else if m.MType == "counter" {
+				log.Info("Нашли данные тип ", m.MType, " значение ", s.data[i].counter)
 				ce := s.data[i].counter
 				hash := CountHash(key, "counter", m.ID, 0, ce)
 				out = Metrics{MType: "counter", ID: i, Value: nil, Delta: &ce, Hash: hash}
-				log.Info("Преобразовали данные в метрику", out)
+				log.Info("Преобразовали данные в метрику ", out)
 				result, err := easyjson.Marshal(out)
 				if err != nil {
 					log.Error(err)
@@ -289,6 +288,31 @@ func (s storedData) GetStoredDataByParamToJSON(m Metrics, key string) ([]byte, i
 				}
 				return result, 200
 			}
+			//switch m.MType {
+			//case "gauge":
+			//	log.Info("Нашли данные тип ", m.MType, "значение ", s.data[i].gauge)
+			//	te := s.data[i].gauge
+			//	hash := CountHash(key, "gauge", m.ID, te, 0)
+			//	out = Metrics{MType: "gauge", ID: i, Value: &te, Delta: nil, Hash: hash}
+			//	log.Info("Преобразовали данные в метрику ", out)
+			//	result, err := easyjson.Marshal(out)
+			//	if err != nil {
+			//		return nil, 400
+			//	}
+			//	return result, 200
+			//case "counter":
+			//	log.Info("Нашли данные тип ", m.MType, " значение ", s.data[i].counter)
+			//	ce := s.data[i].counter
+			//	hash := CountHash(key, "counter", m.ID, 0, ce)
+			//	out = Metrics{MType: "counter", ID: i, Value: nil, Delta: &ce, Hash: hash}
+			//	log.Info("Преобразовали данные в метрику ", out)
+			//	result, err := easyjson.Marshal(out)
+			//	if err != nil {
+			//		log.Error(err)
+			//		return nil, 400
+			//	}
+			//	return result, 200
+			//}
 		}
 	}
 	log.Warn("Не нашли данные по имени", m.ID)
