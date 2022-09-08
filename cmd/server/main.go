@@ -41,8 +41,8 @@ func main() {
 	// r.Post("/update/", server.CheckHash(http.HandlerFunc(server.UpdateJSONMetrics), cfg))
 	r.Post("/value/", server.GetHash(http.HandlerFunc(server.GetJSONMetric), cfg))
 	// r.Post("/value/", server.GetJSONMetric)
-	r.Post("/update/{type}/{name}/{value}", server.UpdateMetrics)
-	r.Get("/value/{type}/{name}", server.GetMetric)
+	r.Post("/update/{type}/{name}/{value}", server.UpdateDBMetrics(http.HandlerFunc(server.UpdateMetrics), cfg))
+	r.Get("/value/{type}/{name}", server.GetDBMetric(http.HandlerFunc(server.GetMetric), cfg))
 
 	c := make(chan os.Signal)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)

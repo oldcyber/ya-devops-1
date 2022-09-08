@@ -32,7 +32,7 @@ func NewDBData() *dbStoreData {
 
 // store JSON to DB
 func (ms dbStoreData) StoreJSONToDB(db *sql.DB, m Metrics) (int, []byte, error) {
-	res := FindStoreDataItem(db, m.ID)
+	_, res := ms.FindStoreDataItem(db, m.ID)
 	log.Info("Search result: ", res)
 	switch res {
 	case false:
@@ -44,10 +44,19 @@ func (ms dbStoreData) StoreJSONToDB(db *sql.DB, m Metrics) (int, []byte, error) 
 		}
 	case true:
 		// Запись найдена - обновляем значение
-		err := ms.UpdateStoreDataItem(db, m)
-		if err != nil {
-			log.Error(err)
-			return 0, nil, err
+		switch m.MType {
+		case "gauge":
+			err := ms.UpdateStoreDataItem(db, m.ID, m.MType, fmt.Sprintf("%f", *m.Value))
+			if err != nil {
+				log.Error(err)
+				return 0, nil, err
+			}
+		case "counter":
+			err := ms.UpdateStoreDataItem(db, m.ID, m.MType, strconv.FormatInt(*m.Delta, 10))
+			if err != nil {
+				log.Error(err)
+				return 0, nil, err
+			}
 		}
 	}
 	return http.StatusOK, nil, nil
@@ -58,6 +67,7 @@ func (ms dbStoreData) GetStoredDBByParamToJSON(db *sql.DB, m Metrics, key string
 	var result []byte
 	item, err := ms.GetStoreDataItem(db, m.ID, m.MType)
 	if err != nil {
+		log.Error("error find record: ", err)
 		return nil, 0
 	}
 	switch m.MType {
@@ -88,6 +98,81 @@ func (ms dbStoreData) GetStoredDBByParamToJSON(db *sql.DB, m Metrics, key string
 
 	log.Warn("Не нашли данные по имени", m.ID)
 	return result, 404
+}
+
+func (ms dbStoreData) GetStoredDBByName(db *sql.DB, mType, mName string) (string, int) {
+	// log.Info("ms.mydata", ms.MetricType)
+	item, err := ms.GetStoreDataItem(db, mName, mType)
+	if err != nil {
+		return "", http.StatusNotFound
+	}
+	switch item.MetricType {
+	case "gauge":
+		return strconv.FormatFloat(item.MetricGauge.Float64, 'f', -1, 64), http.StatusOK
+	case "counter":
+		return strconv.FormatInt(item.MetricCounter.Int64, 10), http.StatusOK
+	}
+
+	return "", http.StatusNotFound
+}
+
+func (ms dbStoreData) AddStoredDBData(db *sql.DB, res []string) (bool, int) {
+	log.Info("Начинаем запись данных", len(res))
+	//if s.data == nil {
+	//	s.data = map[string]StoredType{}
+	//}
+
+	if len(res) < 3 {
+		return false, 404
+	}
+	types := []string{"gauge", "counter"}
+
+	if !contains(types, res[0]) {
+		return false, 501
+	}
+
+	log.Info("Проверяем тип метрики", res[0], "имя метрики", res[1], "значение", res[2])
+	switch res[0] {
+	case "gauge":
+		//g, err := strconv.ParseFloat(res[2], 64)
+		//if err != nil {
+		//	log.Error(err)
+		//	return false, 400
+		//}
+		// Записываем в БД
+		err := ms.UpdateStoreDataItem(db, res[0], res[1], res[2])
+		if err != nil {
+			log.Error(err)
+			return false, 400
+		}
+		// Запись через присваивание
+		// tt := ms.data[res[1]]
+		// tt.gauge = g
+		// tt.stype = res[0]
+		// s.data[res[1]] = tt
+		// log.Info("Записали данные в метрику", res[1], "значение", g)
+		// s.mydata[res[1]] = StoredType{gauge: g}
+		return true, 200
+	case "counter":
+		err := ms.UpdateStoreDataItem(db, res[0], res[1], res[2])
+		if err != nil {
+			log.Error(err)
+			return false, 400
+		}
+
+		//c, err := strconv.ParseInt(res[2], 10, 64)
+		//if err != nil {
+		//	log.Error(err)
+		//	return false, 400
+		//}
+		//tCounter := s.GetStoredData()
+		//t, _ := strconv.ParseInt(tCounter[res[1]], 10, 64)
+		//s.data[res[1]] = StoredType{counter: t + c, stype: res[0]}
+		//log.Info("Записали данные в метрику", res[1], "значение", t+c)
+		return true, 200
+	default:
+		return false, 400
+	}
 }
 
 func (s *storedData) StoreJSONToData(m Metrics) (int, []byte, error) {

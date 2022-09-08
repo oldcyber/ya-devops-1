@@ -148,54 +148,72 @@ func UpdateJSONMetrics(_ http.ResponseWriter, _ *http.Request) {
 }
 
 // UpdateMetrics читаем данные из URL и сохраняем
-func UpdateMetrics(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/plain")
-	var res []string
-	res = append(res, chi.URLParam(r, "type"))
-	res = append(res, chi.URLParam(r, "name"))
-	res = append(res, chi.URLParam(r, "value"))
-
-	if res == nil {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-	er, an := str.AddStoredData(res)
-	if !er {
-		w.WriteHeader(an)
-		return
-	} else {
-		w.WriteHeader(200)
-	}
+func UpdateMetrics(_ http.ResponseWriter, _ *http.Request) {
+	//w.Header().Set("Content-Type", "text/plain")
+	//// Работа с БД
+	//db, err := tools.DBConnect(cfg.GetDatabaseDSN())
+	//if err != nil {
+	//	log.Error(err)
+	//	return
+	//}
+	//defer db.Close()
+	//
+	//var res []string
+	//res = append(res, chi.URLParam(r, "type"))
+	//res = append(res, chi.URLParam(r, "name"))
+	//res = append(res, chi.URLParam(r, "value"))
+	//
+	//if res == nil {
+	//	w.WriteHeader(http.StatusNotFound)
+	//	return
+	//}
+	//er, an := dbstr.AddStoredDBData(db, res)
+	//// er, an := str.AddStoredData(res)
+	//if !er {
+	//	w.WriteHeader(an)
+	//	return
+	//} else {
+	//	w.WriteHeader(200)
+	//}
 }
 
 // GetMetric должен возвращать текущее значение запрашиваемой метрики
 // в текстовом виде по запросу GET
 // http://<АДРЕС_СЕРВЕРА>/value/<ТИП_МЕТРИКИ>/<ИМЯ_МЕТРИКИ>
-func GetMetric(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/plain")
-	typeM := chi.URLParam(r, "type")
-	nameM := chi.URLParam(r, "name")
-	if typeM != "gauge" && typeM != "counter" {
-		w.WriteHeader(http.StatusNotFound)
-		_, err := w.Write([]byte("Нет такого типа метрики"))
-		if err != nil {
-			return
-		}
-		return
-	}
-
-	res, status := str.GetStoredDataByName(typeM, nameM)
-
-	if status != 200 {
-		w.WriteHeader(status)
-		return
-	}
-
-	_, err := w.Write([]byte(res))
-	if err != nil {
-		log.Error("Ошибка в Write", err)
-		return
-	}
+func GetMetric(_ http.ResponseWriter, _ *http.Request) {
+	//w.Header().Set("Content-Type", "text/plain")
+	//// Работа с БД
+	//db, err := tools.DBConnect(cfg.GetDatabaseDSN())
+	//if err != nil {
+	//	log.Error(err)
+	//	return
+	//}
+	//defer db.Close()
+	//
+	//typeM := chi.URLParam(r, "type")
+	//nameM := chi.URLParam(r, "name")
+	//if typeM != "gauge" && typeM != "counter" {
+	//	w.WriteHeader(http.StatusNotFound)
+	//	_, err := w.Write([]byte("Нет такого типа метрики"))
+	//	if err != nil {
+	//		return
+	//	}
+	//	return
+	//}
+	//
+	//res, status := dbstr.GetStoredDBByName(db, typeM, nameM)
+	////res, status := str.GetStoredDataByName(typeM, nameM)
+	//
+	//if status != 200 {
+	//	w.WriteHeader(status)
+	//	return
+	//}
+	//
+	//_, err = w.Write([]byte(res))
+	//if err != nil {
+	//	log.Error("Ошибка в Write", err)
+	//	return
+	//}
 }
 
 // GetJSONMetric должен возвращать текущее значение запрашиваемой метрики
@@ -348,6 +366,7 @@ func GetHash(h http.Handler, cfg config) http.HandlerFunc {
 		var m mydata.Metrics
 		err = json.NewDecoder(r.Body).Decode(&m)
 		if err != nil {
+			log.Error("Ошибка в Unmarshall", err)
 			return
 		}
 		typeM := m.MType
@@ -375,5 +394,76 @@ func GetHash(h http.Handler, cfg config) http.HandlerFunc {
 
 		h.ServeHTTP(w, r)
 		// h(w, r)
+	}
+}
+
+func GetDBMetric(h http.Handler, cfg config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		// Работа с БД
+		db, err := tools.DBConnect(cfg.GetDatabaseDSN())
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		defer db.Close()
+
+		typeM := chi.URLParam(r, "type")
+		nameM := chi.URLParam(r, "name")
+		if typeM != "gauge" && typeM != "counter" {
+			w.WriteHeader(http.StatusNotFound)
+			_, err := w.Write([]byte("Нет такого типа метрики"))
+			if err != nil {
+				return
+			}
+			return
+		}
+
+		res, status := dbstr.GetStoredDBByName(db, typeM, nameM)
+		// res, status := str.GetStoredDataByName(typeM, nameM)
+
+		if status != 200 {
+			w.WriteHeader(status)
+			return
+		}
+
+		_, err = w.Write([]byte(res))
+		if err != nil {
+			log.Error("Ошибка в Write", err)
+			return
+		}
+		h.ServeHTTP(w, r)
+	}
+}
+
+func UpdateDBMetrics(h http.Handler, cfg config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		// Работа с БД
+		db, err := tools.DBConnect(cfg.GetDatabaseDSN())
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		defer db.Close()
+
+		var res []string
+		res = append(res, chi.URLParam(r, "type"))
+		res = append(res, chi.URLParam(r, "name"))
+		res = append(res, chi.URLParam(r, "value"))
+
+		if res == nil {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		er, an := dbstr.AddStoredDBData(db, res)
+		// er, an := str.AddStoredData(res)
+		if !er {
+			w.WriteHeader(an)
+			return
+		} else {
+			w.WriteHeader(200)
+		}
+		h.ServeHTTP(w, r)
 	}
 }
