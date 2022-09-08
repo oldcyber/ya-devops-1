@@ -50,13 +50,13 @@ func main() {
 	db, err := tools.DBConnect(cfg.GetDatabaseDSN())
 	if err != nil {
 		log.Error(err)
-		return
+		// return
 	}
 	defer db.Close()
 	err = tools.CreateTable(db)
 	if err != nil {
 		log.Error(err)
-		return
+		// return
 	}
 
 	wg := new(sync.WaitGroup)
