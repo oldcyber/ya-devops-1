@@ -117,7 +117,7 @@ func (ms dbStoreData) GetStoredDBByName(db *sql.DB, mType, mName string) (string
 }
 
 func (ms dbStoreData) AddStoredDBData(db *sql.DB, res []string) (bool, int) {
-	log.Info("Начинаем запись данных", len(res))
+	//log.Info("Начинаем запись данных", len(res))
 	//if s.data == nil {
 	//	s.data = map[string]StoredType{}
 	//}
@@ -131,7 +131,7 @@ func (ms dbStoreData) AddStoredDBData(db *sql.DB, res []string) (bool, int) {
 		return false, 501
 	}
 
-	log.Info("Проверяем тип метрики", res[0], "имя метрики", res[1], "значение", res[2])
+	log.Info("Проверяем тип метрики: ", res[0], " имя метрики: ", res[1], " значение: ", res[2])
 	switch res[0] {
 	case "gauge":
 		//g, err := strconv.ParseFloat(res[2], 64)

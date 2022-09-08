@@ -42,17 +42,32 @@ func (ms *dbStoreData) UpdateStoreDataItem(db *sql.DB, mType, mName, mValue stri
 		if err != nil {
 			log.Error(err)
 		}
+		log.Info("c: ", c)
+
 		// Ищем старое значение
 		data, res := ms.FindStoreDataItem(db, mName)
 		switch res {
 		case true:
 			c += data.MetricCounter.Int64
+			log.Info("new c: ", c)
+			_, err = db.Exec("UPDATE metrics SET metric_counter = $1 WHERE metric_name = $2", c, mName)
+			if err != nil {
+				log.Error(err)
+				return err
+			}
+		case false:
+			log.Info("No data in DB. Create new record")
+			_, err = db.Exec("INSERT INTO metrics (metric_name, metric_type, metric_counter) VALUES ($1, $2, $3)", mName, mType, c)
+			if err != nil {
+				log.Error(err)
+				return err
+			}
 		}
-		_, err = db.Exec("UPDATE metrics SET metric_counter = $1 WHERE metric_name = $2", c, mName)
-		if err != nil {
-			log.Error(err)
-			return err
-		}
+		//_, err = db.Exec("UPDATE metrics SET metric_counter = $1 WHERE metric_name = $2", c, mName)
+		//if err != nil {
+		//	log.Error(err)
+		//	return err
+		//}
 	}
 	return nil
 }
