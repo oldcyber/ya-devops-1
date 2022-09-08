@@ -47,19 +47,22 @@ func main() {
 	c := make(chan os.Signal)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	// Create DB
-	db, err := tools.DBConnect(cfg.GetDatabaseDSN())
+	db, _ := tools.DBConnect(cfg.GetDatabaseDSN())
+	err := db.Ping()
 	if err != nil {
-		log.Error(err)
+		log.Error("Ошибка соединения: ", err)
+		cfg.DatabaseDSN = ""
 		// return
 	} else {
 		err = tools.CreateTable(db)
 		if err != nil {
-			log.Error(err)
+			log.Error("Ошибка создания таблицы: ", err)
 			// return
 		}
 	}
+
 	defer db.Close()
-	cfg.DatabaseDSN = ""
+
 	//err = tools.CreateTable(db)
 	//if err != nil {
 	//	log.Error(err)

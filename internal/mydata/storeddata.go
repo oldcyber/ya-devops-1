@@ -211,7 +211,7 @@ func (s *storedData) StoreJSONToData(m Metrics) (int, []byte, error) {
 }
 
 func (s *storedData) AddStoredData(res []string) (bool, int) {
-	log.Info("Начинаем запись данных", len(res))
+	log.Info("Начинаем запись данных ", len(res))
 	if s.data == nil {
 		s.data = map[string]StoredType{}
 	}

@@ -11,10 +11,10 @@ func DBConnect(conn string) (*sql.DB, error) {
 	// ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	// defer cancel()
 	conn += "&connect_timeout=10"
-	log.Info("Connecting to database:", conn)
+	log.Info("Connecting to database: ", conn)
 	db, err := sql.Open("postgres", conn)
 	if err != nil {
-		log.Error(err)
+		log.Error("sql.Open error: ", err)
 		return nil, err
 	}
 	// defer dbPool.Close()

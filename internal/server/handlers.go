@@ -46,6 +46,7 @@ func GetPing(h http.Handler, cfg config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		db, err := tools.DBConnect(cfg.GetDatabaseDSN())
 		if err != nil {
+			log.Error("Error connect to DB: ", err)
 			return
 		}
 		defer db.Close()
