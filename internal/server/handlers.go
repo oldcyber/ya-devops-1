@@ -329,23 +329,46 @@ func CheckHash(h http.Handler, cfg config) http.HandlerFunc {
 				return
 			}
 		}
-		status, res, err := dbstr.StoreJSONToDB(db, m)
-		// status, res, err := str.StoreJSONToData(m)
-		if err != nil {
-			w.WriteHeader(status)
-			_, err = w.Write(res)
+		var status int
+		var res []byte
+		dsn := cfg.GetDatabaseDSN()
+		if dsn == "" {
+			status, res, err = str.StoreJSONToData(m)
 			if err != nil {
-				log.Error("Ошибка в Write", err)
+				w.WriteHeader(status)
+				_, err = w.Write(res)
+				if err != nil {
+					log.Error("Ошибка в Write", err)
+					return
+				}
+				log.Error(err)
 				return
+			} else {
+				w.WriteHeader(status)
+				_, err = w.Write(res)
+				if err != nil {
+					log.Error("Ошибка в Write", err)
+					return
+				}
 			}
-			log.Error(err)
-			return
 		} else {
-			w.WriteHeader(status)
-			_, err = w.Write(res)
+			status, res, err = dbstr.StoreJSONToDB(db, m)
 			if err != nil {
-				log.Error("Ошибка в Write", err)
+				w.WriteHeader(status)
+				_, err = w.Write(res)
+				if err != nil {
+					log.Error("Ошибка в Write", err)
+					return
+				}
+				log.Error(err)
 				return
+			} else {
+				w.WriteHeader(status)
+				_, err = w.Write(res)
+				if err != nil {
+					log.Error("Ошибка в Write", err)
+					return
+				}
 			}
 		}
 		h.ServeHTTP(w, r)
@@ -379,8 +402,15 @@ func GetHash(h http.Handler, cfg config) http.HandlerFunc {
 			}
 			return
 		}
+		var res []byte
+		var status int
+		dsn := cfg.GetDatabaseDSN()
+		if dsn == "" {
+			res, status = str.GetStoredDataByParamToJSON(m, cfg.GetKey())
+		} else {
+			res, status = dbstr.GetStoredDBByParamToJSON(db, m, cfg.GetKey())
+		}
 
-		res, status := dbstr.GetStoredDBByParamToJSON(db, m, cfg.GetKey())
 		if status != 200 {
 			w.WriteHeader(status)
 			return
@@ -419,8 +449,14 @@ func GetDBMetric(h http.Handler, cfg config) http.HandlerFunc {
 			return
 		}
 
-		res, status := dbstr.GetStoredDBByName(db, typeM, nameM)
-		// res, status := str.GetStoredDataByName(typeM, nameM)
+		var res string
+		var status int
+		dsn := cfg.GetDatabaseDSN()
+		if dsn == "" {
+			res, status = str.GetStoredDataByName(typeM, nameM)
+		} else {
+			res, status = dbstr.GetStoredDBByName(db, typeM, nameM)
+		}
 
 		if status != 200 {
 			w.WriteHeader(status)
@@ -456,8 +492,14 @@ func UpdateDBMetrics(h http.Handler, cfg config) http.HandlerFunc {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
-		er, an := dbstr.AddStoredDBData(db, res)
-		// er, an := str.AddStoredData(res)
+		dsn := cfg.GetDatabaseDSN()
+		var er bool
+		var an int
+		if dsn == "" {
+			er, an = str.AddStoredData(res)
+		} else {
+			er, an = dbstr.AddStoredDBData(db, res)
+		}
 		if !er {
 			w.WriteHeader(an)
 			return
