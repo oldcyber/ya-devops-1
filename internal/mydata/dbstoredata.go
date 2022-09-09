@@ -18,14 +18,15 @@ type dbStoreData struct {
 func (ms *dbStoreData) CreateStoreDataItem(db *sql.DB, m Metrics) error {
 	_, err := db.Exec("INSERT INTO metrics (metric_name, metric_type, metric_gauge, metric_counter) VALUES ($1, $2, $3, $4)", m.ID, m.MType, m.Value, m.Delta)
 	if err != nil {
-		log.Error(err)
+		log.Error("Ошибка выполнения запроса на добавление: ", err)
 		return err
 	}
 	return nil
 }
 
 // UpdateStoreDataItem Обновление данных в БД (тиа метрики. имя метрики, значение)
-func (ms *dbStoreData) UpdateStoreDataItem(db *sql.DB, mType, mName, mValue string) error {
+func (ms *dbStoreData) UpdateStoreDataItem(db *sql.DB, mName, mType, mValue string) (dbStoreData, error) {
+	var res dbStoreData
 	switch mType {
 	case "gauge":
 		g, err := strconv.ParseFloat(mValue, 64)
@@ -35,41 +36,53 @@ func (ms *dbStoreData) UpdateStoreDataItem(db *sql.DB, mType, mName, mValue stri
 		_, err = db.Exec("UPDATE metrics SET metric_gauge = $1 WHERE metric_name = $2", g, mName)
 		if err != nil {
 			log.Error(err)
-			return err
+			return res, err
 		}
+		err = db.QueryRow("SELECT metric_name, metric_type, metric_gauge, metric_counter FROM metrics WHERE metric_name = $1", mName).Scan(&res.MetricName, &res.MetricType, &res.MetricGauge, &res.MetricCounter)
+		if err != nil {
+			log.Error(err)
+			return res, err
+		}
+
 	case "counter":
 		c, err := strconv.ParseInt(mValue, 10, 64)
 		if err != nil {
 			log.Error(err)
+			return res, err
 		}
 		log.Info("c: ", c)
 
 		// Ищем старое значение
-		data, res := ms.FindStoreDataItem(db, mName)
-		switch res {
+		data, result := ms.FindStoreDataItem(db, mName)
+		switch result {
 		case true:
-			c += data.MetricCounter.Int64
-			log.Info("new c: ", c)
-			_, err = db.Exec("UPDATE metrics SET metric_counter = $1 WHERE metric_name = $2", c, mName)
+			c = c + data.MetricCounter.Int64
+			sqlStatement := "UPDATE metrics SET metric_counter = $1 WHERE metric_name = $2;"
+			_, err := db.Exec(sqlStatement, c, mName)
 			if err != nil {
 				log.Error(err)
-				return err
+				return res, err
+			}
+			err = db.QueryRow("SELECT metric_name, metric_type, metric_gauge, metric_counter FROM metrics WHERE metric_name = $1", mName).Scan(&res.MetricName, &res.MetricType, &res.MetricGauge, &res.MetricCounter)
+			if err != nil {
+				log.Error(err)
+				return res, err
 			}
 		case false:
 			log.Info("No data in DB. Create new record")
 			_, err = db.Exec("INSERT INTO metrics (metric_name, metric_type, metric_counter) VALUES ($1, $2, $3)", mName, mType, c)
 			if err != nil {
 				log.Error(err)
-				return err
+				return res, err
+			}
+			err = db.QueryRow("SELECT metric_name, metric_type, metric_gauge, metric_counter FROM metrics WHERE metric_name = $1", mName).Scan(&res.MetricName, &res.MetricType, &res.MetricGauge, &res.MetricCounter)
+			if err != nil {
+				log.Error(err)
+				return res, err
 			}
 		}
-		//_, err = db.Exec("UPDATE metrics SET metric_counter = $1 WHERE metric_name = $2", c, mName)
-		//if err != nil {
-		//	log.Error(err)
-		//	return err
-		//}
 	}
-	return nil
+	return res, nil
 }
 
 func (ms *dbStoreData) DeleteStoreDataItem(db *sql.DB, metricName string) error {
@@ -91,26 +104,6 @@ func (ms *dbStoreData) GetStoreDataItem(db *sql.DB, metricName, metricType strin
 	}
 	return storeData, nil
 }
-
-//func GetAllStoreDataItems(db *sql.DB) ([]dbStoreData, error) {
-//	var storeData []dbStoreData
-//	rows, err := db.Query("SELECT metric_name, metric_type, metric_gauge, metric_counter FROM metrics")
-//	if err != nil {
-//		log.Error(err)
-//		return storeData, err
-//	}
-//	defer rows.Close()
-//	for rows.Next() {
-//		var s dbStoreData
-//		err := rows.Scan(&s.MetricName, &s.MetricType, &s.MetricGauge, &s.MetricCounter)
-//		if err != nil {
-//			log.Error(err)
-//			return storeData, err
-//		}
-//		storeData = append(storeData, s)
-//	}
-//	return storeData, nil
-//}
 
 func (ms *dbStoreData) FindStoreDataItem(db *sql.DB, metricName string) (dbStoreData, bool) {
 	var storeData dbStoreData

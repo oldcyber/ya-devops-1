@@ -32,6 +32,10 @@ func NewDBData() *dbStoreData {
 
 // store JSON to DB
 func (ms dbStoreData) StoreJSONToDB(db *sql.DB, m Metrics) (int, []byte, error) {
+	var err error
+	var out Metrics
+	var result []byte
+
 	_, res := ms.FindStoreDataItem(db, m.ID)
 	log.Info("Search result: ", res)
 	switch res {
@@ -39,27 +43,56 @@ func (ms dbStoreData) StoreJSONToDB(db *sql.DB, m Metrics) (int, []byte, error) 
 		// Запись не найдена - создаём новую запись
 		err := ms.CreateStoreDataItem(db, m)
 		if err != nil {
-			log.Error(err)
-			return 0, nil, err
+			log.Error("Создание новой записи провалилось: ", err)
+			return http.StatusBadRequest, nil, err
 		}
+		switch m.MType {
+		case "gauge":
+			out = Metrics{MType: m.MType, ID: m.ID, Value: m.Value, Delta: nil, Hash: m.Hash}
+		case "counter":
+			out = Metrics{MType: m.MType, ID: m.ID, Value: nil, Delta: m.Delta, Hash: m.Hash}
+		}
+		result, err = easyjson.Marshal(out)
+		if err != nil {
+			return http.StatusBadRequest, nil, err
+		}
+		return http.StatusOK, result, nil
 	case true:
 		// Запись найдена - обновляем значение
 		switch m.MType {
 		case "gauge":
-			err := ms.UpdateStoreDataItem(db, m.ID, m.MType, fmt.Sprintf("%f", *m.Value))
+			myRes, _ := ms.UpdateStoreDataItem(db, m.ID, m.MType, fmt.Sprintf("%f", *m.Value))
+			//if err != nil {
+			//	log.Error("Обновление записи gauge провалилось: ", err)
+			//	return http.StatusBadRequest, nil, err
+			//}
+			out = Metrics{MType: "gauge", ID: myRes.MetricName, Value: &myRes.MetricGauge.Float64, Delta: nil, Hash: m.Hash}
+			result, err = easyjson.Marshal(out)
 			if err != nil {
-				log.Error(err)
-				return 0, nil, err
+				return http.StatusBadRequest, nil, err
 			}
+			return http.StatusOK, result, nil
 		case "counter":
-			err := ms.UpdateStoreDataItem(db, m.ID, m.MType, strconv.FormatInt(*m.Delta, 10))
+			log.Info("*m.Delta: ", *m.Delta)
+			log.Info("*m.Delta after convert: ", fmt.Sprintf("%d", *m.Delta))
+			log.Info("*m.Delta after my convert: ", strconv.FormatInt(*m.Delta, 10))
+			myRes, err := ms.UpdateStoreDataItem(db, m.ID, m.MType, strconv.FormatInt(*m.Delta, 10))
 			if err != nil {
-				log.Error(err)
-				return 0, nil, err
+				log.Error("Обновление записи counter провалилось: ", err)
+				return http.StatusBadRequest, nil, err
 			}
+			out = Metrics{MType: "counter", ID: myRes.MetricName, Value: nil, Delta: &myRes.MetricCounter.Int64, Hash: m.Hash}
+			result, err = easyjson.Marshal(out)
+			if err != nil {
+				return http.StatusBadRequest, nil, err
+			}
+			return http.StatusOK, result, nil
+		default:
+			return http.StatusBadRequest, nil, err
 		}
 	}
-	return http.StatusOK, nil, nil
+	return http.StatusBadRequest, nil, err
+	// return http.StatusOK, nil, nil
 }
 
 func (ms dbStoreData) GetStoredDBByParamToJSON(db *sql.DB, m Metrics, key string) ([]byte, int) {
@@ -68,22 +101,22 @@ func (ms dbStoreData) GetStoredDBByParamToJSON(db *sql.DB, m Metrics, key string
 	item, err := ms.GetStoreDataItem(db, m.ID, m.MType)
 	if err != nil {
 		log.Error("error find record: ", err)
-		return nil, 0
+		return nil, http.StatusNotFound
 	}
 	switch m.MType {
 	case "gauge":
-		log.Info("Нашли данные тип", m.MType, "значение", item.MetricGauge)
+		log.Info("Нашли данные тип: ", m.MType, " значение: ", item.MetricGauge)
 		te := item.MetricGauge.Float64
 		hash := CountHash(key, "gauge", m.ID, te, 0)
 		out = Metrics{MType: "gauge", ID: item.MetricName, Value: &te, Delta: nil, Hash: hash}
 		log.Info("Преобразовали данные в метрику", out)
 		result, err := easyjson.Marshal(out)
 		if err != nil {
-			return nil, 400
+			return nil, http.StatusNotFound
 		}
-		return result, 200
+		return result, http.StatusOK
 	case "counter":
-		log.Info("Нашли данные тип", m.MType, "значение", item.MetricCounter)
+		log.Info("Нашли данные тип: ", m.MType, " значение: ", item.MetricCounter)
 		ce := item.MetricCounter.Int64
 		hash := CountHash(key, "counter", m.ID, 0, ce)
 		out = Metrics{MType: "counter", ID: item.MetricName, Value: nil, Delta: &ce, Hash: hash}
@@ -91,13 +124,13 @@ func (ms dbStoreData) GetStoredDBByParamToJSON(db *sql.DB, m Metrics, key string
 		result, err := easyjson.Marshal(out)
 		if err != nil {
 			log.Error(err)
-			return nil, 400
+			return nil, http.StatusNotFound
 		}
-		return result, 200
+		return result, http.StatusOK
 	}
 
 	log.Warn("Не нашли данные по имени", m.ID)
-	return result, 404
+	return result, http.StatusNotFound
 }
 
 func (ms dbStoreData) GetStoredDBByName(db *sql.DB, mType, mName string) (string, int) {
@@ -140,7 +173,7 @@ func (ms dbStoreData) AddStoredDBData(db *sql.DB, res []string) (bool, int) {
 		//	return false, 400
 		//}
 		// Записываем в БД
-		err := ms.UpdateStoreDataItem(db, res[0], res[1], res[2])
+		_, err := ms.UpdateStoreDataItem(db, res[0], res[1], res[2])
 		if err != nil {
 			log.Error(err)
 			return false, 400
@@ -154,7 +187,7 @@ func (ms dbStoreData) AddStoredDBData(db *sql.DB, res []string) (bool, int) {
 		// s.mydata[res[1]] = StoredType{gauge: g}
 		return true, 200
 	case "counter":
-		err := ms.UpdateStoreDataItem(db, res[0], res[1], res[2])
+		_, err := ms.UpdateStoreDataItem(db, res[0], res[1], res[2])
 		if err != nil {
 			log.Error(err)
 			return false, 400
@@ -225,7 +258,7 @@ func (s *storedData) AddStoredData(res []string) (bool, int) {
 		return false, 501
 	}
 
-	log.Info("Проверяем тип метрики", res[0], "имя метрики", res[1], "значение", res[2])
+	log.Info("Проверяем тип метрики: ", res[0], " имя метрики: ", res[1], " значение: ", res[2])
 	switch res[0] {
 	case "gauge":
 		g, err := strconv.ParseFloat(res[2], 64)

@@ -311,11 +311,16 @@ func CheckHash(h http.Handler, cfg config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		// Работа с БД
-		db, err := tools.DBConnect(cfg.GetDatabaseDSN())
+		var myPing bool
+		db, _ := tools.DBConnect(cfg.GetDatabaseDSN())
+		err := db.Ping()
 		if err != nil {
+			myPing = false
 			log.Error(err)
-			return
+		} else {
+			myPing = true
 		}
+
 		defer db.Close()
 
 		m := mydata.Metrics{}
@@ -333,8 +338,7 @@ func CheckHash(h http.Handler, cfg config) http.HandlerFunc {
 		}
 		var status int
 		var res []byte
-		dsn := cfg.GetDatabaseDSN()
-		if dsn == "" {
+		if !myPing {
 			status, res, err = str.StoreJSONToData(m)
 			if err != nil {
 				w.WriteHeader(status)
@@ -381,10 +385,14 @@ func GetHash(h http.Handler, cfg config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		// Работа с БД
-		db, err := tools.DBConnect(cfg.GetDatabaseDSN())
+		var myPing bool
+		db, _ := tools.DBConnect(cfg.GetDatabaseDSN())
+		err := db.Ping()
 		if err != nil {
+			myPing = false
 			log.Error(err)
-			return
+		} else {
+			myPing = true
 		}
 		defer db.Close()
 
@@ -406,8 +414,7 @@ func GetHash(h http.Handler, cfg config) http.HandlerFunc {
 		}
 		var res []byte
 		var status int
-		dsn := cfg.GetDatabaseDSN()
-		if dsn == "" {
+		if !myPing {
 			res, status = str.GetStoredDataByParamToJSON(m, cfg.GetKey())
 		} else {
 			res, status = dbstr.GetStoredDBByParamToJSON(db, m, cfg.GetKey())
@@ -433,10 +440,14 @@ func GetDBMetric(h http.Handler, cfg config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		// Работа с БД
-		db, err := tools.DBConnect(cfg.GetDatabaseDSN())
+		var myPing bool
+		db, _ := tools.DBConnect(cfg.GetDatabaseDSN())
+		err := db.Ping()
 		if err != nil {
+			myPing = false
 			log.Error(err)
-			return
+		} else {
+			myPing = true
 		}
 		defer db.Close()
 
@@ -453,8 +464,7 @@ func GetDBMetric(h http.Handler, cfg config) http.HandlerFunc {
 
 		var res string
 		var status int
-		dsn := cfg.GetDatabaseDSN()
-		if dsn == "" {
+		if !myPing {
 			res, status = str.GetStoredDataByName(typeM, nameM)
 		} else {
 			res, status = dbstr.GetStoredDBByName(db, typeM, nameM)
@@ -478,10 +488,14 @@ func UpdateDBMetrics(h http.Handler, cfg config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		// Работа с БД
-		db, err := tools.DBConnect(cfg.GetDatabaseDSN())
+		var myPing bool
+		db, _ := tools.DBConnect(cfg.GetDatabaseDSN())
+		err := db.Ping()
 		if err != nil {
+			myPing = false
 			log.Error(err)
-			return
+		} else {
+			myPing = true
 		}
 		defer db.Close()
 
@@ -494,13 +508,15 @@ func UpdateDBMetrics(h http.Handler, cfg config) http.HandlerFunc {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
-		dsn := cfg.GetDatabaseDSN()
+		// dsn := cfg.GetDatabaseDSN()
 		var er bool
 		var an int
-		if dsn == "" {
+		if !myPing {
 			er, an = str.AddStoredData(res)
+			// er, an = dbstr.AddStoredDBData(db, res)
 		} else {
 			er, an = dbstr.AddStoredDBData(db, res)
+			// er, an = str.AddStoredData(res)
 		}
 		if !er {
 			w.WriteHeader(an)
