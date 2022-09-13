@@ -14,6 +14,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// var DBPool *pgxpool.Pool
+
 func main() {
 	log.Info("Starting server")
 	log.Info("Checking environment variables")
@@ -27,27 +29,52 @@ func main() {
 		return
 	}
 	cfg.PrintConfig()
-	// log.Println("loading config. Address:", cfg.Address, "Restore:", cfg.Restore, "Store interval", cfg.StoreInterval.Seconds(), "Store file", cfg.StoreFile)
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Compress(5))
 	r.Use(server.GzipMiddleware)
+	r.Get("/ping", server.GetPing(http.HandlerFunc(server.Ping), cfg))
 	r.Get("/", server.GetRoot)
-	r.Post("/update/", server.UpdateJSONMetrics)
-	r.Post("/value/", server.GetJSONMetric)
-	r.Post("/update/{type}/{name}/{value}", server.UpdateMetrics)
-	r.Get("/value/{type}/{name}", server.GetMetric)
+	r.Post("/update/", server.CheckHash(http.HandlerFunc(server.Plug), cfg))
+	r.Post("/updates/", server.MassUpdate(http.HandlerFunc(server.Plug), cfg))
+	// r.Post("/update/", server.CheckHash(http.HandlerFunc(server.UpdateJSONMetrics), cfg))
+	r.Post("/value/", server.GetHash(http.HandlerFunc(server.Plug), cfg))
+	// r.Post("/value/", server.GetJSONMetric)
+	r.Post("/update/{type}/{name}/{value}", server.UpdateDBMetrics(http.HandlerFunc(server.Plug), cfg))
+	r.Get("/value/{type}/{name}", server.GetDBMetric(http.HandlerFunc(server.Plug), cfg))
 
 	c := make(chan os.Signal)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	// Create DB
+	db, _ := tools.DBConnect(cfg.GetDatabaseDSN())
+	err := db.Ping()
+	if err != nil {
+		log.Error("Ошибка соединения: ", err)
+		cfg.DatabaseDSN = ""
+		// return
+	} else {
+		err = tools.CreateTable(db)
+		if err != nil {
+			log.Error("Ошибка создания таблицы: ", err)
+			// return
+		}
+	}
+
+	defer db.Close()
+
+	//err = tools.CreateTable(db)
+	//if err != nil {
+	//	log.Error(err)
+	//	// return
+	//}
 
 	wg := new(sync.WaitGroup)
 	wg.Add(2)
 	go func() {
-		wg.Done()
 		log.Error(http.ListenAndServe(cfg.GetAddress(), r))
+		wg.Done()
 	}()
 	go func() {
 		wg.Done()

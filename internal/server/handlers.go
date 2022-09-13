@@ -5,26 +5,62 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
 
 	"github.com/mailru/easyjson"
-
+	"github.com/oldcyber/ya-devops-1/internal/tools"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/oldcyber/ya-devops-1/internal/data"
+	"github.com/oldcyber/ya-devops-1/internal/mydata"
 
 	"github.com/go-chi/chi/v5"
 )
 
-var str = data.NewstoredData() // cfg = tools.NewConfig()
+var (
+	str   = mydata.NewstoredData() // cfg = tools.NewConfig()
+	dbstr = mydata.NewDBData()
+)
+
 // ci  tools.Config
 // ofi tools.OutFileInterface
 
 type outFile interface {
 	WriteToFile([]byte) error
+}
+
+type gzipWriter struct {
+	http.ResponseWriter
+	Writer io.Writer
+}
+
+// Ping при запросе проверяет соединение с базой данных.
+// При успешной проверке хендлер должен вернуть HTTP-статус 200 OK, при неуспешной — 500 Internal Server Error.
+func Ping(_ http.ResponseWriter, _ *http.Request) {
+	// --------------------------------------------------------------
+}
+
+func GetPing(h http.Handler, cfg config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		db, err := tools.DBConnect(cfg.GetDatabaseDSN())
+		if err != nil {
+			log.Error("Error connect to DB: ", err)
+			return
+		}
+		defer db.Close()
+		err = db.Ping()
+		// err = tools.Ping(r.Context())
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+
+		h.ServeHTTP(w, r)
+	}
 }
 
 // GetRoot сервер должен отдавать HTML-страничку со списком имён и значений всех известных ему на текущий момент метрик.
@@ -50,11 +86,6 @@ func GetRoot(w http.ResponseWriter, r *http.Request) {
 	} else {
 		w.Header().Set("Content-Type", "text/html")
 	}
-}
-
-type gzipWriter struct {
-	http.ResponseWriter
-	Writer io.Writer
 }
 
 func (w gzipWriter) Write(b []byte) (int, error) {
@@ -87,124 +118,6 @@ func GzipMiddleware(next http.Handler) http.Handler {
 		next.ServeHTTP(gzipWriter{ResponseWriter: w, Writer: gz}, r)
 	})
 }
-
-// UpdateJSONMetrics читаем JSON из URL и сохраняем
-func UpdateJSONMetrics(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	m := data.Metrics{}
-	err := easyjson.UnmarshalFromReader(r.Body, &m)
-	if err != nil {
-		log.Println("Ошибка в Unmarshall", err)
-		return
-	}
-	status, res, err := str.StoreJSONToData(m)
-	if err != nil {
-		w.WriteHeader(status)
-		_, err = w.Write(res)
-		if err != nil {
-			log.Println("Ошибка в Write", err)
-			return
-		}
-		log.Println(err)
-		return
-	} else {
-		w.WriteHeader(status)
-		_, err = w.Write(res)
-		if err != nil {
-			log.Println("Ошибка в Write", err)
-			return
-		}
-	}
-}
-
-// UpdateMetrics читаем данные из URL и сохраняем
-func UpdateMetrics(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/plain")
-	var res []string
-	res = append(res, chi.URLParam(r, "type"))
-	res = append(res, chi.URLParam(r, "name"))
-	res = append(res, chi.URLParam(r, "value"))
-
-	if res == nil {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-	er, an := str.AddStoredData(res)
-	if !er {
-		w.WriteHeader(an)
-		return
-	} else {
-		w.WriteHeader(200)
-	}
-}
-
-// GetMetric должен возвращать текущее значение запрашиваемой метрики
-// в текстовом виде по запросу GET
-// http://<АДРЕС_СЕРВЕРА>/value/<ТИП_МЕТРИКИ>/<ИМЯ_МЕТРИКИ>
-func GetMetric(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/plain")
-	typeM := chi.URLParam(r, "type")
-	nameM := chi.URLParam(r, "name")
-	if typeM != "gauge" && typeM != "counter" {
-		w.WriteHeader(http.StatusNotFound)
-		_, err := w.Write([]byte("Нет такого типа метрики"))
-		if err != nil {
-			return
-		}
-		return
-	}
-
-	res, status := str.GetStoredDataByName(typeM, nameM)
-
-	if status != 200 {
-		w.WriteHeader(status)
-		return
-	}
-
-	_, err := w.Write([]byte(res))
-	if err != nil {
-		log.Error("Ошибка в Write", err)
-		return
-	}
-}
-
-// GetJSONMetric должен возвращать текущее значение запрашиваемой метрики
-// в текстовом виде по запросу GET
-// http://<АДРЕС_СЕРВЕРА>/value/{JSON}
-func GetJSONMetric(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	var m data.Metrics
-	err := json.NewDecoder(r.Body).Decode(&m)
-	if err != nil {
-		return
-	}
-	log.Info(m.ID, m.MType)
-	typeM := m.MType
-	nameM := m.ID
-	if typeM != "gauge" && typeM != "counter" {
-		w.WriteHeader(http.StatusNotFound)
-		_, err := w.Write([]byte("Нет такого типа метрики"))
-		if err != nil {
-			log.Error(err)
-			return
-		}
-		return
-	}
-
-	res, status := str.GetStoredDataByParamToJSON(typeM, nameM)
-	if status != 200 {
-		w.WriteHeader(status)
-		return
-	}
-	log.Println(string(res))
-	_, err = w.Write(res)
-	if err != nil {
-		log.Error("Ошибка в Write", err)
-		return
-	}
-}
-
-// var OFile *tools.OutFile
 
 // SaveLog is a function to save log to a file
 func SaveLog(f outFile) error {
@@ -239,21 +152,354 @@ func ReadLogFile(cfg config) error {
 
 	scanner := bufio.NewScanner(fo)
 	for scanner.Scan() {
-		var m data.Metrics
+		var m mydata.Metrics
 		err := json.Unmarshal([]byte(scanner.Text()), &m)
 		if err != nil {
 			log.Error(err)
 			return err
 		}
-		if m.MType == "gauge" {
+		switch {
+		case m.MType == "gauge":
 			val = strconv.FormatFloat(*m.Value, 'f', -1, 64)
-		} else if m.MType == "counter" {
+		case m.MType == "counter":
 			val = strconv.FormatInt(*m.Delta, 10)
-		} else {
+		default:
 			log.Error("Нет такого типа метрики")
 			return err
 		}
 		str.AddStoredData([]string{m.MType, m.ID, val})
 	}
 	return nil
+}
+
+func CheckHash(h http.Handler, cfg config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		// Работа с БД
+		var myPing bool
+		db, _ := tools.DBConnect(cfg.GetDatabaseDSN())
+		err := db.Ping()
+		if err != nil {
+			myPing = false
+			log.Error(err)
+		} else {
+			myPing = true
+		}
+
+		defer db.Close()
+
+		m := mydata.Metrics{}
+		err = easyjson.UnmarshalFromReader(r.Body, &m)
+		if err != nil {
+			log.Error("Ошибка в Unmarshall: ", err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		if m.Hash != "" {
+			if !cfg.CheckHash(m) {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+		}
+		var status int
+		var res []byte
+		if !myPing {
+			status, res, err = str.StoreJSONToData(m)
+			if err != nil {
+				w.WriteHeader(status)
+				_, err = w.Write(res)
+				if err != nil {
+					log.Error("Ошибка в Write", err)
+					return
+				}
+				log.Error(err)
+				return
+			} else {
+				w.WriteHeader(status)
+				_, err = w.Write(res)
+				if err != nil {
+					log.Error("Ошибка в Write", err)
+					return
+				}
+			}
+		} else {
+			status, res, err = dbstr.StoreJSONToDB(db, m)
+			if err != nil {
+				w.WriteHeader(status)
+				_, err = w.Write(res)
+				if err != nil {
+					log.Error("Ошибка в Write", err)
+					return
+				}
+				log.Error(err)
+				return
+			} else {
+				w.WriteHeader(status)
+				_, err = w.Write(res)
+				if err != nil {
+					log.Error("Ошибка в Write", err)
+					return
+				}
+			}
+		}
+		h.ServeHTTP(w, r)
+	}
+}
+
+func GetHash(h http.Handler, cfg config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		// Работа с БД
+		var myPing bool
+		db, _ := tools.DBConnect(cfg.GetDatabaseDSN())
+		err := db.Ping()
+		if err != nil {
+			myPing = false
+			log.Error(err)
+		} else {
+			myPing = true
+		}
+		defer db.Close()
+
+		var m mydata.Metrics
+		err = json.NewDecoder(r.Body).Decode(&m)
+		if err != nil {
+			log.Error("Ошибка в Unmarshall", err)
+			return
+		}
+		typeM := m.MType
+		if typeM != "gauge" && typeM != "counter" {
+			w.WriteHeader(http.StatusNotFound)
+			_, err := w.Write([]byte("Нет такого типа метрики"))
+			if err != nil {
+				log.Error(err)
+				return
+			}
+			return
+		}
+		var res []byte
+		var status int
+		if !myPing {
+			res, status = str.GetStoredDataByParamToJSON(m, cfg.GetKey())
+		} else {
+			res, status = dbstr.GetStoredDBByParamToJSON(db, m, cfg.GetKey())
+		}
+
+		if status != 200 {
+			w.WriteHeader(status)
+			return
+		}
+		log.Info(string(res))
+		_, err = w.Write(res)
+		if err != nil {
+			log.Error("Ошибка в Write", err)
+			return
+		}
+
+		h.ServeHTTP(w, r)
+		// h(w, r)
+	}
+}
+
+func GetDBMetric(h http.Handler, cfg config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		// Работа с БД
+		var myPing bool
+		db, _ := tools.DBConnect(cfg.GetDatabaseDSN())
+		err := db.Ping()
+		if err != nil {
+			myPing = false
+			log.Error(err)
+		} else {
+			myPing = true
+		}
+		defer db.Close()
+
+		typeM := chi.URLParam(r, "type")
+		nameM := chi.URLParam(r, "name")
+		if typeM != "gauge" && typeM != "counter" {
+			w.WriteHeader(http.StatusNotFound)
+			_, err := w.Write([]byte("Нет такого типа метрики"))
+			if err != nil {
+				return
+			}
+			return
+		}
+
+		var res string
+		var status int
+		if !myPing {
+			res, status = str.GetStoredDataByName(typeM, nameM)
+		} else {
+			res, status = dbstr.GetStoredDBByName(db, typeM, nameM)
+		}
+
+		if status != 200 {
+			w.WriteHeader(status)
+			return
+		}
+
+		_, err = w.Write([]byte(res))
+		if err != nil {
+			log.Error("Ошибка в Write", err)
+			return
+		}
+		h.ServeHTTP(w, r)
+	}
+}
+
+func UpdateDBMetrics(h http.Handler, cfg config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		// Работа с БД
+		var myPing bool
+		db, _ := tools.DBConnect(cfg.GetDatabaseDSN())
+		err := db.Ping()
+		if err != nil {
+			myPing = false
+			log.Error(err)
+		} else {
+			myPing = true
+		}
+		defer db.Close()
+
+		var res []string
+		res = append(res, chi.URLParam(r, "type"))
+		res = append(res, chi.URLParam(r, "name"))
+		res = append(res, chi.URLParam(r, "value"))
+
+		if res == nil {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		// dsn := cfg.GetDatabaseDSN()
+		var er bool
+		var an int
+		if !myPing {
+			er, an = str.AddStoredData(res)
+			// er, an = dbstr.AddStoredDBData(db, res)
+		} else {
+			er, an = dbstr.AddStoredDBData(db, res)
+			// er, an = str.AddStoredData(res)
+		}
+		if !er {
+			w.WriteHeader(an)
+			return
+		} else {
+			w.WriteHeader(200)
+		}
+		h.ServeHTTP(w, r)
+	}
+}
+
+func MassUpdate(h http.Handler, cfg config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Работа с БД
+		var myPing bool
+		db, _ := tools.DBConnect(cfg.GetDatabaseDSN())
+		err := db.Ping()
+		if err != nil {
+			myPing = false
+			log.Error(err)
+		} else {
+			myPing = true
+		}
+		defer db.Close()
+
+		body, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			log.Error("Ошибка в ReadAll", err)
+			return
+		}
+		log.Info("BODY: ", string(body))
+		var metrics []mydata.Metrics
+
+		//jsonBlob := []byte(`[{"Name": "Platypus", "Order": "Monotremata"},{"Name": "Quoll","Order": "Dasyuromorphia"}]`)
+		//type Animal struct {
+		//	Name  string
+		//	Order string
+		//}
+		//var animals []Animal
+		//err = json.Unmarshal(jsonBlob, &animals)
+		//if err != nil {
+		//	fmt.Println("error:", err)
+		//}
+		//fmt.Printf("%+v", animals)
+
+		//for _, v := range strings.Split(string(body), ",") {
+		//	var m mydata.Metrics
+		//	err = json.Unmarshal([]byte(v), &m)
+		//	if err != nil {
+		//		log.Error("Ошибка в Unmarshal", err)
+		//		return
+		//	}
+		//	metrics = append(metrics, m)
+		//}
+		err = json.Unmarshal(body, &metrics)
+		if err != nil {
+			log.Error("Ошибка в Unmarshal 1 ", err)
+			return
+		}
+		if metrics == nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		for _, m := range metrics {
+			if m.Hash != "" {
+				if !cfg.CheckHash(m) {
+					w.WriteHeader(http.StatusBadRequest)
+					return
+				}
+			}
+			var status int
+			var res []byte
+			if !myPing {
+				status, res, err = str.StoreJSONToData(m)
+				if err != nil {
+					w.WriteHeader(status)
+					_, err = w.Write(res)
+					if err != nil {
+						log.Error("Ошибка в Write", err)
+						return
+					}
+					log.Error(err)
+					return
+				} else {
+					w.WriteHeader(status)
+					_, err = w.Write(res)
+					if err != nil {
+						log.Error("Ошибка в Write", err)
+						return
+					}
+				}
+			} else {
+				status, res, err = dbstr.StoreJSONToDB(db, m)
+				if err != nil {
+					w.WriteHeader(status)
+					_, err = w.Write(res)
+					if err != nil {
+						log.Error("Ошибка в Write", err)
+						return
+					}
+					log.Error(err)
+					return
+				} else {
+					w.WriteHeader(status)
+					_, err = w.Write(res)
+					if err != nil {
+						log.Error("Ошибка в Write", err)
+						return
+					}
+				}
+			}
+		}
+
+		h.ServeHTTP(w, r)
+	}
+}
+
+// Plug заглушка
+func Plug(_ http.ResponseWriter, _ *http.Request) {
 }
