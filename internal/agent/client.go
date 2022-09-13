@@ -36,6 +36,7 @@ func WorkWithMetrics(cfg config) error {
 			}
 			sendJSONGaugeMetrics(r, cfg)
 			sendJSONCounterMetrics(int64(c.Count()), cfg)
+			sendBulkJSONMetrics(r, cfg)
 		}
 	}
 }

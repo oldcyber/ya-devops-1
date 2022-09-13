@@ -96,3 +96,35 @@ func sendJSONCounterMetrics(c int64, cfg config) {
 		}
 	}()
 }
+
+func sendBulkJSONMetrics(myMap map[string]float64, cfg config) {
+	// var bulk []byte
+	// var j []byte
+	// Проверяем доступность сервера
+	err := Pinger(cfg)
+	if err != nil {
+		log.Error("Сервер не доступен: ", err)
+		return
+	}
+	//	Инициализируем клиента
+	client := &http.Client{}
+
+	func() {
+		m := mydata.Metrics{}
+		j := m.SendBulkMetrics(myMap)
+
+		var resp *http.Response
+		req, err := http.NewRequest(http.MethodPost, "http://"+cfg.GetAddress()+"/updates/", bytes.NewBuffer(j))
+		if err != nil {
+			log.Error(err)
+		}
+		req.Header.Add("Content-Type", "application/json")
+		resp, err = client.Do(req)
+		if err != nil {
+			log.Error("Ошибка при отправке данных в сервис метрик: ", err)
+		} else {
+			defer resp.Body.Close()
+			log.Info("Отправлено на сервер:", string(j), "Статус-код ", resp.Status)
+		}
+	}()
+}

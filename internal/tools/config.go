@@ -136,6 +136,7 @@ func NewConfig() *config {
 		StoreFile:      "/tmp/devops-metrics-db.json",
 		Restore:        true,
 		Key:            "",
+		DatabaseDSN:    "",
 	}
 }
 

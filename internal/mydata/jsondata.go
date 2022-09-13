@@ -54,3 +54,35 @@ func (m *Metrics) SendCounterMetrics(c int64, key string) []byte {
 	}
 	return rawBytes
 }
+
+func (m *Metrics) SendBulkMetrics(myMap map[string]float64) []byte {
+	var rawBytes []byte
+	metrics := make([]Metrics, 0)
+	for k, v := range myMap {
+		// хз почему без промежуточного объявления все Value получали одинаковое значения
+		name := k
+		val := v
+		metrics = append(metrics, Metrics{
+			ID:    name,
+			MType: "gauge",
+			Value: &val,
+		})
+	}
+
+	// return metrics
+
+	rawBytes = append(rawBytes, '[')
+	c := len(metrics)
+	for i := range metrics {
+		rawB, err := easyjson.Marshal(metrics[i])
+		if err != nil {
+			panic(err)
+		}
+		rawBytes = append(rawBytes, rawB...)
+		if i < c-1 {
+			rawBytes = append(rawBytes, ',')
+		}
+	}
+	rawBytes = append(rawBytes, ']')
+	return rawBytes
+}
