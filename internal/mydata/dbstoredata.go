@@ -26,7 +26,6 @@ func (ms *dbStoreData) CreateStoreDataItem(db *sql.DB, m Metrics) error {
 
 // UpdateStoreDataItem Обновление данных в БД (тиа метрики. имя метрики, значение)
 func (ms *dbStoreData) UpdateStoreDataItem(db *sql.DB, mName, mType, mValue string) (dbStoreData, error) {
-	log.Info("UpdateStoreDataItem: ", mName, mType, mValue)
 	var res dbStoreData
 	switch mType {
 	case "gauge":

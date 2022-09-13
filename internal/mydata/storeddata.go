@@ -61,7 +61,6 @@ func (ms dbStoreData) StoreJSONToDB(db *sql.DB, m Metrics) (int, []byte, error) 
 		// Запись найдена - обновляем значение
 		switch m.MType {
 		case "gauge":
-			log.Info("Value: ", *m.Value)
 			myRes, _ := ms.UpdateStoreDataItem(db, m.ID, m.MType, fmt.Sprintf("%.12f", *m.Value))
 			//if err != nil {
 			//	log.Error("Обновление записи gauge провалилось: ", err)
