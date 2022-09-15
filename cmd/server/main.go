@@ -30,26 +30,16 @@ func main() {
 	}
 	cfg.PrintConfig()
 
-	r := chi.NewRouter()
-	r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer)
-	r.Use(middleware.Compress(5))
-	r.Use(server.GzipMiddleware)
-	r.Get("/ping", server.GetPing(http.HandlerFunc(server.Ping), cfg))
-	r.Get("/", server.GetRoot)
-	r.Post("/update/", server.CheckHash(http.HandlerFunc(server.Plug), cfg))
-	r.Post("/updates/", server.MassUpdate(http.HandlerFunc(server.Plug), cfg))
-	// r.Post("/update/", server.CheckHash(http.HandlerFunc(server.UpdateJSONMetrics), cfg))
-	r.Post("/value/", server.GetHash(http.HandlerFunc(server.Plug), cfg))
-	// r.Post("/value/", server.GetJSONMetric)
-	r.Post("/update/{type}/{name}/{value}", server.UpdateDBMetrics(http.HandlerFunc(server.Plug), cfg))
-	r.Get("/value/{type}/{name}", server.GetDBMetric(http.HandlerFunc(server.Plug), cfg))
-
-	c := make(chan os.Signal)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	// Create DB
 	db, _ := tools.DBConnect(cfg.GetDatabaseDSN())
 	err := db.Ping()
+	var myPing bool
+	if err != nil {
+		myPing = false
+		log.Error(err)
+	} else {
+		myPing = true
+	}
 	if err != nil {
 		log.Error("Ошибка соединения: ", err)
 		cfg.DatabaseDSN = ""
@@ -63,6 +53,24 @@ func main() {
 	}
 
 	defer db.Close()
+
+	r := chi.NewRouter()
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
+	r.Use(middleware.Compress(5))
+	r.Use(server.GzipMiddleware)
+	r.Get("/ping", server.GetPing(http.HandlerFunc(server.Ping), db))
+	r.Get("/", server.GetRoot)
+	r.Post("/update/", server.UpdateValue(http.HandlerFunc(server.Plug), cfg, db, myPing))
+	r.Post("/updates/", server.MassUpdateValues(http.HandlerFunc(server.Plug), cfg, db, myPing))
+	// r.Post("/update/", server.UpdateValue(http.HandlerFunc(server.UpdateJSONMetrics), cfg))
+	r.Post("/value/", server.GetValue(http.HandlerFunc(server.Plug), cfg, db, myPing))
+	// r.Post("/value/", server.GetJSONMetric)
+	r.Post("/update/{type}/{name}/{value}", server.UpdateDBMetrics(http.HandlerFunc(server.Plug), cfg, db, myPing))
+	r.Get("/value/{type}/{name}", server.GetDBMetric(http.HandlerFunc(server.Plug), db, myPing))
+
+	c := make(chan os.Signal)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 
 	//err = tools.CreateTable(db)
 	//if err != nil {

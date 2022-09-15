@@ -3,16 +3,15 @@ package server
 import (
 	"bufio"
 	"compress/gzip"
+	"database/sql"
 	"encoding/json"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
 
 	"github.com/mailru/easyjson"
-	"github.com/oldcyber/ya-devops-1/internal/tools"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/oldcyber/ya-devops-1/internal/mydata"
@@ -43,15 +42,10 @@ func Ping(_ http.ResponseWriter, _ *http.Request) {
 	// --------------------------------------------------------------
 }
 
-func GetPing(h http.Handler, cfg config) http.HandlerFunc {
+func GetPing(h http.Handler, db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		db, err := tools.DBConnect(cfg.GetDatabaseDSN())
-		if err != nil {
-			log.Error("Error connect to DB: ", err)
-			return
-		}
 		defer db.Close()
-		err = db.Ping()
+		err := db.Ping()
 		// err = tools.Ping(r.Context())
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -172,31 +166,29 @@ func ReadLogFile(cfg config) error {
 	return nil
 }
 
-func CheckHash(h http.Handler, cfg config) http.HandlerFunc {
+func UpdateValue(h http.Handler, cfg config, db *sql.DB, myPing bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		// Работа с БД
-		var myPing bool
-		db, _ := tools.DBConnect(cfg.GetDatabaseDSN())
-		err := db.Ping()
-		if err != nil {
-			myPing = false
-			log.Error(err)
-		} else {
-			myPing = true
-		}
-
-		defer db.Close()
+		//var myPing bool
+		//err := db.Ping()
+		//if err != nil {
+		//	myPing = false
+		//	log.Error(err)
+		//} else {
+		//	myPing = true
+		//}
+		//defer db.Close()
 
 		m := mydata.Metrics{}
-		err = easyjson.UnmarshalFromReader(r.Body, &m)
+		err := easyjson.UnmarshalFromReader(r.Body, &m)
 		if err != nil {
 			log.Error("Ошибка в Unmarshall: ", err)
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 		if m.Hash != "" {
-			if !cfg.CheckHash(m) {
+			if !checkHash(cfg, m) {
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
@@ -204,7 +196,7 @@ func CheckHash(h http.Handler, cfg config) http.HandlerFunc {
 		var status int
 		var res []byte
 		if !myPing {
-			status, res, err = str.StoreJSONToData(m)
+			status, res, err = str.StoreToData(m)
 			if err != nil {
 				w.WriteHeader(status)
 				_, err = w.Write(res)
@@ -223,7 +215,7 @@ func CheckHash(h http.Handler, cfg config) http.HandlerFunc {
 				}
 			}
 		} else {
-			status, res, err = dbstr.StoreJSONToDB(db, m)
+			status, res, err = dbstr.StoreToDB(db, m)
 			if err != nil {
 				w.WriteHeader(status)
 				_, err = w.Write(res)
@@ -246,23 +238,22 @@ func CheckHash(h http.Handler, cfg config) http.HandlerFunc {
 	}
 }
 
-func GetHash(h http.Handler, cfg config) http.HandlerFunc {
+func GetValue(h http.Handler, cfg config, db *sql.DB, myPing bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		// Работа с БД
-		var myPing bool
-		db, _ := tools.DBConnect(cfg.GetDatabaseDSN())
-		err := db.Ping()
-		if err != nil {
-			myPing = false
-			log.Error(err)
-		} else {
-			myPing = true
-		}
-		defer db.Close()
+		//var myPing bool
+		//err := db.Ping()
+		//if err != nil {
+		//	myPing = false
+		//	log.Error(err)
+		//} else {
+		//	myPing = true
+		//}
+		//defer db.Close()
 
 		var m mydata.Metrics
-		err = json.NewDecoder(r.Body).Decode(&m)
+		err := json.NewDecoder(r.Body).Decode(&m)
 		if err != nil {
 			log.Error("Ошибка в Unmarshall", err)
 			return
@@ -301,20 +292,19 @@ func GetHash(h http.Handler, cfg config) http.HandlerFunc {
 	}
 }
 
-func GetDBMetric(h http.Handler, cfg config) http.HandlerFunc {
+func GetDBMetric(h http.Handler, db *sql.DB, myPing bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		// Работа с БД
-		var myPing bool
-		db, _ := tools.DBConnect(cfg.GetDatabaseDSN())
-		err := db.Ping()
-		if err != nil {
-			myPing = false
-			log.Error(err)
-		} else {
-			myPing = true
-		}
-		defer db.Close()
+		//var myPing bool
+		//err := db.Ping()
+		//if err != nil {
+		//	myPing = false
+		//	log.Error(err)
+		//} else {
+		//	myPing = true
+		//}
+		//defer db.Close()
 
 		typeM := chi.URLParam(r, "type")
 		nameM := chi.URLParam(r, "name")
@@ -340,7 +330,7 @@ func GetDBMetric(h http.Handler, cfg config) http.HandlerFunc {
 			return
 		}
 
-		_, err = w.Write([]byte(res))
+		_, err := w.Write([]byte(res))
 		if err != nil {
 			log.Error("Ошибка в Write", err)
 			return
@@ -349,20 +339,19 @@ func GetDBMetric(h http.Handler, cfg config) http.HandlerFunc {
 	}
 }
 
-func UpdateDBMetrics(h http.Handler, cfg config) http.HandlerFunc {
+func UpdateDBMetrics(h http.Handler, cfg config, db *sql.DB, myPing bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		// Работа с БД
-		var myPing bool
-		db, _ := tools.DBConnect(cfg.GetDatabaseDSN())
-		err := db.Ping()
-		if err != nil {
-			myPing = false
-			log.Error(err)
-		} else {
-			myPing = true
-		}
-		defer db.Close()
+		//var myPing bool
+		//err := db.Ping()
+		//if err != nil {
+		//	myPing = false
+		//	log.Error(err)
+		//} else {
+		//	myPing = true
+		//}
+		//defer db.Close()
 
 		var res []string
 		res = append(res, chi.URLParam(r, "type"))
@@ -393,21 +382,20 @@ func UpdateDBMetrics(h http.Handler, cfg config) http.HandlerFunc {
 	}
 }
 
-func MassUpdate(h http.Handler, cfg config) http.HandlerFunc {
+func MassUpdateValues(h http.Handler, cfg config, db *sql.DB, myPing bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Работа с БД
-		var myPing bool
-		db, _ := tools.DBConnect(cfg.GetDatabaseDSN())
-		err := db.Ping()
-		if err != nil {
-			myPing = false
-			log.Error(err)
-		} else {
-			myPing = true
-		}
-		defer db.Close()
+		//var myPing bool
+		//err := db.Ping()
+		//if err != nil {
+		//	myPing = false
+		//	log.Error(err)
+		//} else {
+		//	myPing = true
+		//}
+		//defer db.Close()
 
-		body, err := ioutil.ReadAll(r.Body)
+		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			log.Error("Ошибка в ReadAll", err)
 			return
@@ -415,27 +403,6 @@ func MassUpdate(h http.Handler, cfg config) http.HandlerFunc {
 		log.Info("BODY: ", string(body))
 		var metrics []mydata.Metrics
 
-		//jsonBlob := []byte(`[{"Name": "Platypus", "Order": "Monotremata"},{"Name": "Quoll","Order": "Dasyuromorphia"}]`)
-		//type Animal struct {
-		//	Name  string
-		//	Order string
-		//}
-		//var animals []Animal
-		//err = json.Unmarshal(jsonBlob, &animals)
-		//if err != nil {
-		//	fmt.Println("error:", err)
-		//}
-		//fmt.Printf("%+v", animals)
-
-		//for _, v := range strings.Split(string(body), ",") {
-		//	var m mydata.Metrics
-		//	err = json.Unmarshal([]byte(v), &m)
-		//	if err != nil {
-		//		log.Error("Ошибка в Unmarshal", err)
-		//		return
-		//	}
-		//	metrics = append(metrics, m)
-		//}
 		err = json.Unmarshal(body, &metrics)
 		if err != nil {
 			log.Error("Ошибка в Unmarshal 1 ", err)
@@ -448,7 +415,7 @@ func MassUpdate(h http.Handler, cfg config) http.HandlerFunc {
 
 		for _, m := range metrics {
 			if m.Hash != "" {
-				if !cfg.CheckHash(m) {
+				if !checkHash(cfg, m) {
 					w.WriteHeader(http.StatusBadRequest)
 					return
 				}
@@ -456,7 +423,7 @@ func MassUpdate(h http.Handler, cfg config) http.HandlerFunc {
 			var status int
 			var res []byte
 			if !myPing {
-				status, res, err = str.StoreJSONToData(m)
+				status, res, err = str.StoreToData(m)
 				if err != nil {
 					w.WriteHeader(status)
 					_, err = w.Write(res)
@@ -475,7 +442,7 @@ func MassUpdate(h http.Handler, cfg config) http.HandlerFunc {
 					}
 				}
 			} else {
-				status, res, err = dbstr.StoreJSONToDB(db, m)
+				status, res, err = dbstr.StoreToDB(db, m)
 				if err != nil {
 					w.WriteHeader(status)
 					_, err = w.Write(res)

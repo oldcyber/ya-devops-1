@@ -67,15 +67,15 @@ func Test_storedData_AddStoredJSONData(t *testing.T) {
 			s := &storedData{
 				data: tt.fields.data,
 			}
-			status, res, err := s.StoreJSONToData(tt.args.m)
+			status, res, err := s.StoreToData(tt.args.m)
 			if err != tt.err {
-				t.Errorf("StoreJSONToData() err = %v, err %v", err, tt.err)
+				t.Errorf("StoreToData() err = %v, err %v", err, tt.err)
 			}
 			if status != tt.status {
-				t.Errorf("StoreJSONToData() status = %v, err %v", status, tt.status)
+				t.Errorf("StoreToData() status = %v, err %v", status, tt.status)
 			}
 			if string(res) != string(tt.res) {
-				t.Errorf("StoreJSONToData() res = %v, err %v", string(res), string(tt.res))
+				t.Errorf("StoreToData() res = %v, err %v", string(res), string(tt.res))
 			}
 		})
 	}

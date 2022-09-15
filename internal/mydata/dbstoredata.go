@@ -32,6 +32,7 @@ func (ms *dbStoreData) UpdateStoreDataItem(db *sql.DB, mName, mType, mValue stri
 		g, err := strconv.ParseFloat(mValue, 64)
 		if err != nil {
 			log.Error(err)
+			return res, err
 		}
 		_, err = db.Exec("UPDATE metrics SET metric_gauge = $1 WHERE metric_name = $2", g, mName)
 		if err != nil {
@@ -70,7 +71,8 @@ func (ms *dbStoreData) UpdateStoreDataItem(db *sql.DB, mName, mType, mValue stri
 			}
 		case false:
 			log.Info("No data in DB. Create new record")
-			_, err = db.Exec("INSERT INTO metrics (metric_name, metric_type, metric_counter) VALUES ($1, $2, $3)", mName, mType, c)
+			err = ms.CreateStoreDataItem(db, Metrics{ID: mName, MType: mType, Delta: &c})
+			//_, err = db.Exec("INSERT INTO metrics (metric_name, metric_type, metric_counter) VALUES ($1, $2, $3)", mName, mType, c)
 			if err != nil {
 				log.Error(err)
 				return res, err

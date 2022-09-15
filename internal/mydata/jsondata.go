@@ -1,3 +1,5 @@
+//go:generate easyjson -all $GOFILE
+
 package mydata
 
 import (
@@ -17,7 +19,7 @@ type Metrics struct {
 	Hash  string   `json:"hash,omitempty"`  // Значение хеш-функции
 }
 
-func (m *Metrics) SendGaugeMetrics(k, key string, v float64) []byte {
+func (m *Metrics) MarshalGaugeMetrics(k, key string, v float64) []byte {
 	m.ID = k
 	m.MType = "gauge"
 	m.Value = &v
@@ -36,7 +38,7 @@ func (m *Metrics) SendGaugeMetrics(k, key string, v float64) []byte {
 	return rawBytes
 }
 
-func (m *Metrics) SendCounterMetrics(c int64, key string) []byte {
+func (m *Metrics) MarshalCounterMetrics(c int64, key string) []byte {
 	m.ID = "PollCount"
 	m.MType = "counter"
 	m.Delta = &c

@@ -30,8 +30,8 @@ func NewDBData() *dbStoreData {
 	return &dbStoreData{}
 }
 
-// store JSON to DB
-func (ms dbStoreData) StoreJSONToDB(db *sql.DB, m Metrics) (int, []byte, error) {
+// StoreToDB store JSON to DB
+func (ms dbStoreData) StoreToDB(db *sql.DB, m Metrics) (int, []byte, error) {
 	var err error
 	var out Metrics
 	var result []byte
@@ -208,7 +208,7 @@ func (ms dbStoreData) AddStoredDBData(db *sql.DB, res []string) (bool, int) {
 	}
 }
 
-func (s *storedData) StoreJSONToData(m Metrics) (int, []byte, error) {
+func (s *storedData) StoreToData(m Metrics) (int, []byte, error) {
 	var (
 		out    Metrics
 		err    error

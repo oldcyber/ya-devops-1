@@ -1,15 +1,11 @@
 package tools
 
 import (
-	"crypto/hmac"
-	"crypto/sha256"
 	"flag"
-	"fmt"
 	"os"
 	"time"
 
 	"github.com/caarlos0/env/v6"
-	"github.com/oldcyber/ya-devops-1/internal/mydata"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -142,30 +138,4 @@ func NewConfig() *config {
 
 func (c *config) PrintConfig() {
 	log.Info("Config after all init:", *c)
-}
-
-func (c *config) CountHash(m mydata.Metrics) string {
-	var d string
-	// SHA256 hash
-	h := hmac.New(sha256.New, []byte(c.GetKey()))
-	switch m.MType {
-	case "gauge":
-		d = fmt.Sprintf("%s:gauge:%f", m.ID, *m.Value)
-	case "counter":
-		d = fmt.Sprintf("%s:counter:%d", m.ID, *m.Delta)
-	}
-	h.Write([]byte(d))
-	return fmt.Sprintf("%x", h.Sum(nil))
-}
-
-// CheckHash Check incoming hash signature and compare it with stored hash
-func (c *config) CheckHash(m mydata.Metrics) bool {
-	hash := c.CountHash(m)
-	// log.Info("Input hash: ", m.Hash, " new hash: ", hash)
-	if !hmac.Equal([]byte(m.Hash), []byte(hash)) {
-		log.Info("Hash is not equal")
-		return false
-	}
-	log.Info("Hash is equal")
-	return true
 }
