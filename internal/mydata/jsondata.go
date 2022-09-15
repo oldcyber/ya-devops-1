@@ -1,4 +1,4 @@
-//go:generate easyjson -all $GOFILE
+//go:generate easyjson -all -snake_case $GOFILE
 
 package mydata
 
