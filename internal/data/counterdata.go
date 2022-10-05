@@ -1,4 +1,4 @@
-package mydata
+package data
 
 import (
 	"sync"

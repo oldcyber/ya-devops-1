@@ -14,8 +14,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// var DBPool *pgxpool.Pool
-
 func main() {
 	log.Info("Starting server")
 	log.Info("Checking environment variables")
@@ -29,62 +27,18 @@ func main() {
 		return
 	}
 	cfg.PrintConfig()
-
-	// Create DB
-	db, _ := tools.DBConnect(cfg.GetDatabaseDSN())
-	err := db.Ping()
-	var myPing bool
-	if err != nil {
-		myPing = false
-		log.Error(err)
-	} else {
-		myPing = true
-	}
-	if err != nil {
-		log.Error("Ошибка соединения: ", err)
-		cfg.DatabaseDSN = ""
-		// return
-	} else {
-		err = tools.CreateTable(db)
-		if err != nil {
-			log.Error("Ошибка создания таблицы: ", err)
-			// return
-		}
-	}
-
-	defer db.Close()
-
-	// надо как-то проверить что хотят работу с БД, но передают всё подряд
-	// Например если коннекта к БД нет, то надо запускать сохранение в файл
-	// создадим ключ для типа хранения данных
-	var storeTO string
-	if !myPing && cfg.GetStoreFile() != "" {
-		storeTO = "file"
-	} else {
-		storeTO = "db"
-	}
+	// log.Println("loading config. Address:", cfg.Address, "Restore:", cfg.Restore, "Store interval", cfg.StoreInterval.Seconds(), "Store file", cfg.StoreFile)
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Compress(5))
 	r.Use(server.GzipMiddleware)
-	r.Get("/ping", server.GetPing(http.HandlerFunc(server.Ping), db))
 	r.Get("/", server.GetRoot)
-	// Инкремент 2
-	// StoreMetrics
-	r.Post("/update/{type}/{name}/{value}", server.StoreMetrics(http.HandlerFunc(server.Plug), db, storeTO))
-	// Инкремент 3
-	// GetMetrics
-	r.Get("/value/{type}/{name}", server.GetMetrics(http.HandlerFunc(server.Plug), db, storeTO))
-	// Инкремент 4
-	// StoreMetricsFromJSON
-	r.Post("/update/", server.StoreMetricsFromJSON(http.HandlerFunc(server.Plug), cfg, db, storeTO))
-	// GetMetricsFromJSON
-	r.Post("/value/", server.GetMetricsFromJSON(http.HandlerFunc(server.Plug), cfg, db, storeTO))
-	// Инкремент 12
-	// MassStoreMetrics
-	r.Post("/updates/", server.MassStoreMetrics(http.HandlerFunc(server.Plug), cfg, db, storeTO))
+	r.Post("/update/", server.UpdateJSONMetrics)
+	r.Post("/value/", server.GetJSONMetric)
+	r.Post("/update/{type}/{name}/{value}", server.UpdateMetrics)
+	r.Get("/value/{type}/{name}", server.GetMetric)
 
 	c := make(chan os.Signal)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
@@ -92,8 +46,8 @@ func main() {
 	wg := new(sync.WaitGroup)
 	wg.Add(2)
 	go func() {
-		log.Error(http.ListenAndServe(cfg.GetAddress(), r))
 		wg.Done()
+		log.Error(http.ListenAndServe(cfg.GetAddress(), r))
 	}()
 	go func() {
 		wg.Done()
