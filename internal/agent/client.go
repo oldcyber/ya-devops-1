@@ -3,7 +3,7 @@ package agent
 import (
 	"time"
 
-	"github.com/oldcyber/ya-devops-1/internal/data"
+	"github.com/oldcyber/ya-devops-1/internal/mydata"
 )
 
 type config interface {
@@ -11,11 +11,12 @@ type config interface {
 	GetReportInterval() time.Duration
 	GetAddress() string
 	GetRestore() bool
+	GetKey() string
 }
 
 func WorkWithMetrics(cfg config) error {
-	c := data.NewCounter()
-	m := data.NewMetricStore()
+	c := mydata.NewCounter()
+	m := mydata.NewMetricStore()
 	timer1 := time.NewTicker(cfg.GetPollInterval())
 	timer2 := time.NewTicker(cfg.GetReportInterval())
 
@@ -35,6 +36,7 @@ func WorkWithMetrics(cfg config) error {
 			}
 			sendJSONGaugeMetrics(r, cfg)
 			sendJSONCounterMetrics(int64(c.Count()), cfg)
+			sendBulkJSONMetrics(r, cfg)
 		}
 	}
 }

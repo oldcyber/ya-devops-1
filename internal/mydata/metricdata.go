@@ -1,4 +1,4 @@
-package data
+package mydata
 
 import (
 	"crypto/rand"
@@ -8,13 +8,6 @@ import (
 	"runtime"
 	"sync"
 )
-
-//type MetricWork interface {
-//	AddMetric(name string, value gauge)
-//	GetMetrics() map[string]gauge
-//	Count() counter
-//	IncCounter() counter
-//}
 
 type (
 	gauge   float64

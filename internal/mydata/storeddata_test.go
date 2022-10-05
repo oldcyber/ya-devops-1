@@ -1,4 +1,4 @@
-package data
+package mydata
 
 import (
 	"reflect"
@@ -67,15 +67,15 @@ func Test_storedData_AddStoredJSONData(t *testing.T) {
 			s := &storedData{
 				data: tt.fields.data,
 			}
-			status, res, err := s.StoreJSONToData(tt.args.m)
+			status, res, err := s.StoreToData(tt.args.m)
 			if err != tt.err {
-				t.Errorf("StoreJSONToData() err = %v, err %v", err, tt.err)
+				t.Errorf("StoreToData() err = %v, err %v", err, tt.err)
 			}
 			if status != tt.status {
-				t.Errorf("StoreJSONToData() status = %v, err %v", status, tt.status)
+				t.Errorf("StoreToData() status = %v, err %v", status, tt.status)
 			}
 			if string(res) != string(tt.res) {
-				t.Errorf("StoreJSONToData() res = %v, err %v", string(res), string(tt.res))
+				t.Errorf("StoreToData() res = %v, err %v", string(res), string(tt.res))
 			}
 		})
 	}
@@ -86,9 +86,13 @@ func Test_storedData_GetStoredDataByName(t *testing.T) {
 		data map[string]StoredType
 	}
 	type args struct {
-		mtype string
-		mname string
+		mtype Metrics
+		key   string
 	}
+	d := int64(2)
+	delta := &d
+	g := 1.034
+	value := &g
 
 	tests := []struct {
 		name       string
@@ -106,10 +110,16 @@ func Test_storedData_GetStoredDataByName(t *testing.T) {
 				},
 			},
 			args: args{
-				mtype: "gauge",
-				mname: "TestGauge",
+				mtype: Metrics{
+					ID:    "TestGauge",
+					MType: "gauge",
+					Delta: nil,
+					Value: value,
+					Hash:  "12345",
+				},
+				key: "12345",
 			},
-			body:       `{"id":"TestGauge","type":"gauge","value":1.034}`,
+			body:       `{"id":"TestGauge","type":"gauge","value":1.034,"hash":"68ee887fe513edb9332ccf95d49af9f9d3568753fb177c9d413d2076af7fe675"}`,
 			statuscode: 200,
 		},
 		{
@@ -121,10 +131,16 @@ func Test_storedData_GetStoredDataByName(t *testing.T) {
 				},
 			},
 			args: args{
-				mtype: "counter",
-				mname: "TestCounter",
+				mtype: Metrics{
+					ID:    "TestCounter",
+					MType: "counter",
+					Delta: delta,
+					Value: nil,
+					Hash:  "12345",
+				},
+				key: "12345",
 			},
-			body:       `{"id":"TestCounter","type":"counter","delta":2}`,
+			body:       `{"id":"TestCounter","type":"counter","delta":2,"hash":"0afbdcac07f9dc004960c783feb2838ffadc4f002db95946b5a1bf68dfd872dd"}`,
 			statuscode: 200,
 		},
 	}
@@ -133,7 +149,7 @@ func Test_storedData_GetStoredDataByName(t *testing.T) {
 			s := storedData{
 				data: tt.fields.data,
 			}
-			got, got1 := s.GetStoredDataByParamToJSON(tt.args.mtype, tt.args.mname)
+			got, got1 := s.GetStoredDataByParamToJSON(tt.args.mtype, tt.args.key)
 			if !reflect.DeepEqual(string(got), tt.body) {
 				t.Errorf("GetStoredDataByParamToJSON() got = %v, err %v", string(got), tt.body)
 			}

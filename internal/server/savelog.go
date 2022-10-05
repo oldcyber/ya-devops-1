@@ -10,7 +10,13 @@ import (
 type config interface {
 	GetStoreFile() string
 	GetStoreInterval() time.Duration
+	GetKey() string
+	GetDatabaseDSN() string
 }
+
+//type dbStoreData interface {
+//	StoreToDB(*sql.DB, mydata.Metrics) (int, []byte, error)
+//}
 
 //type outFile interface {
 //	OpenWriteToFile(fileName string, interval time.Duration) (file *os.File, err error)
@@ -44,6 +50,4 @@ func WorkWithLogs(cfg config) error {
 		}
 		log.Info("Log file saved")
 	}
-
-	//}
 }
