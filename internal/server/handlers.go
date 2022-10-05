@@ -19,13 +19,25 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-var (
-	str   = mydata.NewstoredData() // cfg = tools.NewConfig()
-	dbstr = mydata.NewDBData()
-)
+type DBStorage interface {
+	AddNewItemToDB(*sql.DB, []string) (bool, int)
+	GetStoredDataByNameFromDB(*sql.DB, string, string) (string, int)
+	StoreToDB(*sql.DB, mydata.Metrics) (int, []byte, error)
+	GetStoredDataByParamFromDBToJSON(*sql.DB, mydata.Metrics, string) ([]byte, int)
+}
 
-// ci  tools.Config
-// ofi tools.OutFileInterface
+type MapStorage interface {
+	AddNewItemToFile([]string) (bool, int)
+	GetStoredDataByName(string, string) (string, int)
+	StoreToData(mydata.Metrics) (int, []byte, error)
+	GetStoredDataByParamToJSON(mydata.Metrics, string) ([]byte, int)
+	GetDataToJSON() []mydata.Metrics
+}
+
+type Storage interface {
+	DBStorage
+	MapStorage
+}
 
 type outFile interface {
 	WriteToFile([]byte) error
@@ -35,6 +47,10 @@ type gzipWriter struct {
 	http.ResponseWriter
 	Writer io.Writer
 }
+
+//func NewHandlers(s Storage) *Handlers {
+//	return &Handlers{s: s}
+//}
 
 // Ping при запросе проверяет соединение с базой данных.
 // При успешной проверке хендлер должен вернуть HTTP-статус 200 OK, при неуспешной — 500 Internal Server Error.
@@ -62,7 +78,8 @@ func GetRoot(w http.ResponseWriter, r *http.Request) {
 	contentType := r.Header.Get("Content-type")
 	if contentType == "application/json" {
 		w.Header().Set("Content-Type", "application/json")
-		res := str.StoredDataToJSON()
+		var s Storage
+		res := s.GetDataToJSON()
 		for _, v := range res {
 			marshal, err := easyjson.Marshal(v)
 			if err != nil {
@@ -115,8 +132,9 @@ func GzipMiddleware(next http.Handler) http.Handler {
 
 // SaveLog is a function to save log to a file
 func SaveLog(f outFile) error {
+	var s Storage
 	// log.Info("Start function SaveLog")
-	sdi := str.StoredDataToJSON()
+	sdi := s.GetDataToJSON()
 	log.Info("sdi", sdi)
 	for _, v := range sdi {
 		marshal, err := easyjson.Marshal(v)
@@ -146,7 +164,10 @@ func ReadLogFile(cfg config) error {
 
 	scanner := bufio.NewScanner(fo)
 	for scanner.Scan() {
-		var m mydata.Metrics
+		var (
+			m mydata.Metrics
+			s Storage
+		)
 		err := json.Unmarshal([]byte(scanner.Text()), &m)
 		if err != nil {
 			log.Error(err)
@@ -161,26 +182,22 @@ func ReadLogFile(cfg config) error {
 			log.Error("Нет такого типа метрики")
 			return err
 		}
-		str.AddStoredData([]string{m.MType, m.ID, val})
+		s.AddNewItemToFile([]string{m.MType, m.ID, val})
 	}
 	return nil
 }
 
-func UpdateValue(h http.Handler, cfg config, db *sql.DB, myPing bool) http.HandlerFunc {
+func StoreMetricsFromJSON(h http.Handler, cfg config, db *sql.DB, storeTO string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		// Работа с БД
-		//var myPing bool
-		//err := db.Ping()
-		//if err != nil {
-		//	myPing = false
-		//	log.Error(err)
-		//} else {
-		//	myPing = true
-		//}
-		//defer db.Close()
-
 		m := mydata.Metrics{}
+
+		var (
+			status int
+			res    []byte
+			s      Storage
+		)
+
 		err := easyjson.UnmarshalFromReader(r.Body, &m)
 		if err != nil {
 			log.Error("Ошибка в Unmarshall: ", err)
@@ -193,10 +210,10 @@ func UpdateValue(h http.Handler, cfg config, db *sql.DB, myPing bool) http.Handl
 				return
 			}
 		}
-		var status int
-		var res []byte
-		if !myPing {
-			status, res, err = str.StoreToData(m)
+
+		switch storeTO {
+		case "db":
+			status, res, err = s.StoreToDB(db, m)
 			if err != nil {
 				w.WriteHeader(status)
 				_, err = w.Write(res)
@@ -214,8 +231,8 @@ func UpdateValue(h http.Handler, cfg config, db *sql.DB, myPing bool) http.Handl
 					return
 				}
 			}
-		} else {
-			status, res, err = dbstr.StoreToDB(db, m)
+		case "file":
+			status, res, err = s.StoreToData(m)
 			if err != nil {
 				w.WriteHeader(status)
 				_, err = w.Write(res)
@@ -234,25 +251,21 @@ func UpdateValue(h http.Handler, cfg config, db *sql.DB, myPing bool) http.Handl
 				}
 			}
 		}
+
 		h.ServeHTTP(w, r)
 	}
 }
 
-func GetValue(h http.Handler, cfg config, db *sql.DB, myPing bool) http.HandlerFunc {
+func GetMetricsFromJSON(h http.Handler, cfg config, db *sql.DB, storeTO string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		// Работа с БД
-		//var myPing bool
-		//err := db.Ping()
-		//if err != nil {
-		//	myPing = false
-		//	log.Error(err)
-		//} else {
-		//	myPing = true
-		//}
-		//defer db.Close()
 
-		var m mydata.Metrics
+		var (
+			m      mydata.Metrics
+			res    []byte
+			status int
+			s      Storage
+		)
 		err := json.NewDecoder(r.Body).Decode(&m)
 		if err != nil {
 			log.Error("Ошибка в Unmarshall", err)
@@ -268,12 +281,12 @@ func GetValue(h http.Handler, cfg config, db *sql.DB, myPing bool) http.HandlerF
 			}
 			return
 		}
-		var res []byte
-		var status int
-		if !myPing {
-			res, status = str.GetStoredDataByParamToJSON(m, cfg.GetKey())
-		} else {
-			res, status = dbstr.GetStoredDBByParamToJSON(db, m, cfg.GetKey())
+
+		switch storeTO {
+		case "db":
+			res, status = s.GetStoredDataByParamFromDBToJSON(db, m, cfg.GetKey())
+		case "file":
+			res, status = s.GetStoredDataByParamToJSON(m, cfg.GetKey())
 		}
 
 		if status != 200 {
@@ -292,19 +305,9 @@ func GetValue(h http.Handler, cfg config, db *sql.DB, myPing bool) http.HandlerF
 	}
 }
 
-func GetDBMetric(h http.Handler, db *sql.DB, myPing bool) http.HandlerFunc {
+func GetMetrics(h http.Handler, db *sql.DB, storeTO string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
-		// Работа с БД
-		//var myPing bool
-		//err := db.Ping()
-		//if err != nil {
-		//	myPing = false
-		//	log.Error(err)
-		//} else {
-		//	myPing = true
-		//}
-		//defer db.Close()
 
 		typeM := chi.URLParam(r, "type")
 		nameM := chi.URLParam(r, "name")
@@ -317,12 +320,17 @@ func GetDBMetric(h http.Handler, db *sql.DB, myPing bool) http.HandlerFunc {
 			return
 		}
 
-		var res string
-		var status int
-		if !myPing {
-			res, status = str.GetStoredDataByName(typeM, nameM)
-		} else {
-			res, status = dbstr.GetStoredDBByName(db, typeM, nameM)
+		var (
+			res    string
+			status int
+			s      Storage
+		)
+
+		switch storeTO {
+		case "db":
+			res, status = s.GetStoredDataByNameFromDB(db, typeM, nameM)
+		case "file":
+			res, status = s.GetStoredDataByName(typeM, nameM)
 		}
 
 		if status != 200 {
@@ -339,21 +347,16 @@ func GetDBMetric(h http.Handler, db *sql.DB, myPing bool) http.HandlerFunc {
 	}
 }
 
-func UpdateDBMetrics(h http.Handler, cfg config, db *sql.DB, myPing bool) http.HandlerFunc {
+func StoreMetrics(h http.Handler, db *sql.DB, storeTO string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
-		// Работа с БД
-		//var myPing bool
-		//err := db.Ping()
-		//if err != nil {
-		//	myPing = false
-		//	log.Error(err)
-		//} else {
-		//	myPing = true
-		//}
-		//defer db.Close()
+		var (
+			res []string
+			er  bool
+			an  int
+			s   Storage
+		)
 
-		var res []string
 		res = append(res, chi.URLParam(r, "type"))
 		res = append(res, chi.URLParam(r, "name"))
 		res = append(res, chi.URLParam(r, "value"))
@@ -362,16 +365,14 @@ func UpdateDBMetrics(h http.Handler, cfg config, db *sql.DB, myPing bool) http.H
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
-		// dsn := cfg.GetDatabaseDSN()
-		var er bool
-		var an int
-		if !myPing {
-			er, an = str.AddStoredData(res)
-			// er, an = dbstr.AddStoredDBData(db, res)
-		} else {
-			er, an = dbstr.AddStoredDBData(db, res)
-			// er, an = str.AddStoredData(res)
+
+		switch storeTO {
+		case "db":
+			er, an = s.AddNewItemToDB(db, res)
+		case "file":
+			er, an = s.AddNewItemToFile(res)
 		}
+
 		if !er {
 			w.WriteHeader(an)
 			return
@@ -382,26 +383,21 @@ func UpdateDBMetrics(h http.Handler, cfg config, db *sql.DB, myPing bool) http.H
 	}
 }
 
-func MassUpdateValues(h http.Handler, cfg config, db *sql.DB, myPing bool) http.HandlerFunc {
+func MassStoreMetrics(h http.Handler, cfg config, db *sql.DB, storeTO string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Работа с БД
-		//var myPing bool
-		//err := db.Ping()
-		//if err != nil {
-		//	myPing = false
-		//	log.Error(err)
-		//} else {
-		//	myPing = true
-		//}
-		//defer db.Close()
-
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			log.Error("Ошибка в ReadAll", err)
 			return
 		}
 		log.Info("BODY: ", string(body))
-		var metrics []mydata.Metrics
+
+		var (
+			metrics []mydata.Metrics
+			status  int
+			res     []byte
+			s       Storage
+		)
 
 		err = json.Unmarshal(body, &metrics)
 		if err != nil {
@@ -420,10 +416,10 @@ func MassUpdateValues(h http.Handler, cfg config, db *sql.DB, myPing bool) http.
 					return
 				}
 			}
-			var status int
-			var res []byte
-			if !myPing {
-				status, res, err = str.StoreToData(m)
+
+			switch storeTO {
+			case "db":
+				status, res, err = s.StoreToDB(db, m)
 				if err != nil {
 					w.WriteHeader(status)
 					_, err = w.Write(res)
@@ -441,8 +437,8 @@ func MassUpdateValues(h http.Handler, cfg config, db *sql.DB, myPing bool) http.
 						return
 					}
 				}
-			} else {
-				status, res, err = dbstr.StoreToDB(db, m)
+			case "file":
+				status, res, err = s.StoreToData(m)
 				if err != nil {
 					w.WriteHeader(status)
 					_, err = w.Write(res)
@@ -461,8 +457,8 @@ func MassUpdateValues(h http.Handler, cfg config, db *sql.DB, myPing bool) http.
 					}
 				}
 			}
-		}
 
+		}
 		h.ServeHTTP(w, r)
 	}
 }

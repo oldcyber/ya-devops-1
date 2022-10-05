@@ -54,6 +54,16 @@ func main() {
 
 	defer db.Close()
 
+	// надо как-то проверить что хотят работу с БД, но передают всё подряд
+	// Например если коннекта к БД нет, то надо запускать сохранение в файл
+	// создадим ключ для типа хранения данных
+	var storeTO string
+	if !myPing && cfg.GetStoreFile() != "" {
+		storeTO = "file"
+	} else {
+		storeTO = "db"
+	}
+
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
@@ -61,22 +71,23 @@ func main() {
 	r.Use(server.GzipMiddleware)
 	r.Get("/ping", server.GetPing(http.HandlerFunc(server.Ping), db))
 	r.Get("/", server.GetRoot)
-	r.Post("/update/", server.UpdateValue(http.HandlerFunc(server.Plug), cfg, db, myPing))
-	r.Post("/updates/", server.MassUpdateValues(http.HandlerFunc(server.Plug), cfg, db, myPing))
-	// r.Post("/update/", server.UpdateValue(http.HandlerFunc(server.UpdateJSONMetrics), cfg))
-	r.Post("/value/", server.GetValue(http.HandlerFunc(server.Plug), cfg, db, myPing))
-	// r.Post("/value/", server.GetJSONMetric)
-	r.Post("/update/{type}/{name}/{value}", server.UpdateDBMetrics(http.HandlerFunc(server.Plug), cfg, db, myPing))
-	r.Get("/value/{type}/{name}", server.GetDBMetric(http.HandlerFunc(server.Plug), db, myPing))
+	// Инкремент 2
+	// StoreMetrics
+	r.Post("/update/{type}/{name}/{value}", server.StoreMetrics(http.HandlerFunc(server.Plug), db, storeTO))
+	// Инкремент 3
+	// GetMetrics
+	r.Get("/value/{type}/{name}", server.GetMetrics(http.HandlerFunc(server.Plug), db, storeTO))
+	// Инкремент 4
+	// StoreMetricsFromJSON
+	r.Post("/update/", server.StoreMetricsFromJSON(http.HandlerFunc(server.Plug), cfg, db, storeTO))
+	// GetMetricsFromJSON
+	r.Post("/value/", server.GetMetricsFromJSON(http.HandlerFunc(server.Plug), cfg, db, storeTO))
+	// Инкремент 12
+	// MassStoreMetrics
+	r.Post("/updates/", server.MassStoreMetrics(http.HandlerFunc(server.Plug), cfg, db, storeTO))
 
 	c := make(chan os.Signal)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-
-	//err = tools.CreateTable(db)
-	//if err != nil {
-	//	log.Error(err)
-	//	// return
-	//}
 
 	wg := new(sync.WaitGroup)
 	wg.Add(2)

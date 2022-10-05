@@ -158,7 +158,7 @@ package server
 //			r.Get("/value/{type}/{name}", GetMetric)
 //			r.ServeHTTP(w, tt.args.r)
 //			str := mydata.NewstoredData()
-//			er, an := str.AddStoredData(tt.post.mydata)
+//			er, an := str.AddNewItem(tt.post.mydata)
 //			if !er {
 //				w.WriteHeader(an)
 //				return
