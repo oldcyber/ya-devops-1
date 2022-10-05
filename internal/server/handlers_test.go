@@ -46,7 +46,7 @@ package server
 //
 //	for _, tt := range tests {
 //		t.Run(tt.name, func(t *testing.T) {
-//			_ = mydata.NewstoredData()
+//			_ = data.NewstoredData()
 //			target := "/update/" + tt.request
 //			w := httptest.NewRecorder()
 //
@@ -119,7 +119,7 @@ package server
 //		r *http.Request
 //	}
 //	type post struct {
-//		mydata []string
+//		data []string
 //	}
 //
 //	type want struct {
@@ -135,7 +135,7 @@ package server
 //		{
 //			name: "positive test #1",
 //			post: post{
-//				mydata: []string{"counter", "testCounter", "100"},
+//				data: []string{"counter", "testCounter", "100"},
 //			},
 //			args: args{
 //				// w: httptest.NewRecorder(),
@@ -157,8 +157,8 @@ package server
 //			r := chi.NewRouter()
 //			r.Get("/value/{type}/{name}", GetMetric)
 //			r.ServeHTTP(w, tt.args.r)
-//			str := mydata.NewstoredData()
-//			er, an := str.AddNewItem(tt.post.mydata)
+//			str := data.NewstoredData()
+//			er, an := str.AddStoredData(tt.post.data)
 //			if !er {
 //				w.WriteHeader(an)
 //				return
