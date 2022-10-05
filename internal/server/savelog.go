@@ -3,6 +3,7 @@ package server
 import (
 	"time"
 
+	"github.com/oldcyber/ya-devops-1/internal/storage"
 	"github.com/oldcyber/ya-devops-1/internal/tools"
 	log "github.com/sirupsen/logrus"
 )
@@ -10,13 +11,11 @@ import (
 type config interface {
 	GetStoreFile() string
 	GetStoreInterval() time.Duration
+	GetKey() string
+	GetDatabaseDSN() string
 }
 
-//type outFile interface {
-//	OpenWriteToFile(fileName string, interval time.Duration) (file *os.File, err error)
-//}
-
-func WorkWithLogs(cfg config) error {
+func WorkWithLogs(cfg config, ms *storage.StoredMem) error {
 	log.Info("Loading store file:", cfg.GetStoreFile(), " store interval:", cfg.GetStoreInterval())
 	if cfg.GetStoreInterval() == 0 {
 		log.Info("Надо писать в живую")
@@ -34,7 +33,7 @@ func WorkWithLogs(cfg config) error {
 		if err != nil {
 			return err
 		}
-		err = SaveLog(f)
+		err = SaveLog(f, ms)
 		if err != nil {
 			return err
 		}
@@ -44,6 +43,4 @@ func WorkWithLogs(cfg config) error {
 		}
 		log.Info("Log file saved")
 	}
-
-	//}
 }
