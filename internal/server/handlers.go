@@ -81,7 +81,7 @@ func GetRoot(h http.Handler, db *sql.DB, ms *storage.StoredMem, storeTO string) 
 			s = storage.NewDBStoreData(db)
 		}
 
-		log.Info("storeTO: ", storeTO)
+		// log.Info("storeTO: ", storeTO)
 		res := s.GetDataToJSON()
 		for _, v := range res {
 			marshal, err := easyjson.Marshal(v)
@@ -204,7 +204,7 @@ func StoreMetricsFromJSON(h http.Handler, cfg config, db *sql.DB, ms *storage.St
 			res    []byte
 			s      Storage
 		)
-		log.Info("storeTO: ", storeTO)
+		// log.Info("storeTO: ", storeTO)
 		switch storeTO {
 		case "file":
 			s = storage.NewStoredData(ms)

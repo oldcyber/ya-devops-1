@@ -7,7 +7,6 @@ import (
 
 	"github.com/oldcyber/ya-devops-1/internal/env"
 	"github.com/oldcyber/ya-devops-1/internal/storage"
-	log "github.com/sirupsen/logrus"
 )
 
 func CalcHash(cfg config, m storage.Metrics) string {
@@ -28,9 +27,9 @@ func CalcHash(cfg config, m storage.Metrics) string {
 func checkHash(cfg config, m storage.Metrics) bool {
 	hash := CalcHash(cfg, m)
 	if !hmac.Equal([]byte(m.Hash), []byte(hash)) {
-		log.Info("Hash is not equal")
+		// log.Info("Hash is not equal")
 		return false
 	}
-	log.Info("Hash is equal")
+	// log.Info("Hash is equal")
 	return true
 }

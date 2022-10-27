@@ -250,7 +250,7 @@ func (ms *DBStoreData) GetStoredDataByParamToJSON(m Metrics, key string) (res []
 		return result, StatusOK
 	}
 
-	log.Warn("Не нашли данные по имени", m.ID)
+	// log.Warn("Не нашли данные по имени", m.ID)
 	return result, StatusNotFound
 }
 
@@ -313,7 +313,7 @@ func (ms DBStoreData) StoreTo(m Metrics) (code int, re []byte, er error) {
 }
 
 func CountHash(key, mtype, mid string, mvalue float64, mdelta int64) string {
-	log.Info("Вычисляем хэш для метрики: ", mid, " типа: ", mtype, " mvalue: ", mvalue, " mdelta: ", mdelta)
+	// log.Info("Вычисляем хэш для метрики: ", mid, " типа: ", mtype, " mvalue: ", mvalue, " mdelta: ", mdelta)
 	var d string
 	// SHA256 hash
 	h := hmac.New(sha256.New, []byte(key))
