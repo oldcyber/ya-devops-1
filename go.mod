@@ -8,7 +8,10 @@ require (
 	github.com/sirupsen/logrus v1.9.0
 )
 
-require github.com/caarlos0/env/v6 v6.9.3
+require (
+	github.com/caarlos0/env/v6 v6.9.3
+	github.com/lib/pq v1.10.7
+)
 
 require (
 	github.com/josharian/intern v1.0.0 // indirect

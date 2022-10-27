@@ -3,6 +3,7 @@ package server
 import (
 	"bufio"
 	"compress/gzip"
+	"database/sql"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -11,28 +12,77 @@ import (
 	"strings"
 
 	"github.com/mailru/easyjson"
-
+	"github.com/oldcyber/ya-devops-1/internal/env"
+	"github.com/oldcyber/ya-devops-1/internal/tools"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/oldcyber/ya-devops-1/internal/data"
+	"github.com/oldcyber/ya-devops-1/internal/storage"
 
 	"github.com/go-chi/chi/v5"
 )
 
-var str = data.NewstoredData() // cfg = tools.NewConfig()
-// ci  tools.Config
-// ofi tools.OutFileInterface
+type Storage interface {
+	AddNewItem([]string) (bool, int)
+	GetStoredDataByName(string, string) (string, int)
+	StoreTo(storage.Metrics) (int, []byte, error)
+	GetStoredDataByParamToJSON(storage.Metrics, string) ([]byte, int)
+	GetDataToJSON() []storage.Metrics
+}
 
 type outFile interface {
 	WriteToFile([]byte) error
 }
 
+type gzipWriter struct {
+	http.ResponseWriter
+	Writer io.Writer
+}
+
+const (
+	saveToFile = "file"
+	saveToDB   = "db"
+)
+
+// Ping при запросе проверяет соединение с базой данных.
+// При успешной проверке хендлер должен вернуть HTTP-статус 200 OK, при неуспешной — 500 Internal Server Error.
+func Ping(_ http.ResponseWriter, _ *http.Request) {
+	// --------------------------------------------------------------
+}
+
+func GetPing(h http.Handler, db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		defer db.Close()
+		err := db.Ping()
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+
+		h.ServeHTTP(w, r)
+	}
+}
+
 // GetRoot сервер должен отдавать HTML-страничку со списком имён и значений всех известных ему на текущий момент метрик.
-func GetRoot(w http.ResponseWriter, r *http.Request) {
-	contentType := r.Header.Get("Content-type")
-	if contentType == "application/json" {
-		w.Header().Set("Content-Type", "application/json")
-		res := str.StoredDataToJSON()
+func GetRoot(h http.Handler, db *sql.DB, ms *storage.StoredMem, storeTO string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		contentType := r.Header.Get("Content-type")
+		if contentType == "application/json" {
+			w.Header().Set("Content-type", "application/json")
+		} else {
+			w.Header().Set("Content-type", "text/html")
+		}
+
+		var s Storage
+		switch storeTO {
+		case "file":
+			s = storage.NewStoredData(ms)
+		case saveToDB:
+			s = storage.NewDBStoreData(db)
+		}
+
+		log.Info("storeTO: ", storeTO)
+		res := s.GetDataToJSON()
 		for _, v := range res {
 			marshal, err := easyjson.Marshal(v)
 			if err != nil {
@@ -47,14 +97,8 @@ func GetRoot(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-	} else {
-		w.Header().Set("Content-Type", "text/html")
+		h.ServeHTTP(w, r)
 	}
-}
-
-type gzipWriter struct {
-	http.ResponseWriter
-	Writer io.Writer
 }
 
 func (w gzipWriter) Write(b []byte) (int, error) {
@@ -74,7 +118,7 @@ func GzipMiddleware(next http.Handler) http.Handler {
 		// создаём gzip.Writer поверх текущего w
 		gz, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
 		if err != nil {
-			_, err := io.WriteString(w, err.Error())
+			_, err = io.WriteString(w, err.Error())
 			if err != nil {
 				return
 			}
@@ -88,132 +132,13 @@ func GzipMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// UpdateJSONMetrics читаем JSON из URL и сохраняем
-func UpdateJSONMetrics(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	m := data.Metrics{}
-	err := easyjson.UnmarshalFromReader(r.Body, &m)
-	if err != nil {
-		log.Println("Ошибка в Unmarshall", err)
-		return
-	}
-	status, res, err := str.StoreJSONToData(m)
-	if err != nil {
-		w.WriteHeader(status)
-		_, err = w.Write(res)
-		if err != nil {
-			log.Println("Ошибка в Write", err)
-			return
-		}
-		log.Println(err)
-		return
-	} else {
-		w.WriteHeader(status)
-		_, err = w.Write(res)
-		if err != nil {
-			log.Println("Ошибка в Write", err)
-			return
-		}
-	}
-}
-
-// UpdateMetrics читаем данные из URL и сохраняем
-func UpdateMetrics(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/plain")
-	var res []string
-	res = append(res, chi.URLParam(r, "type"))
-	res = append(res, chi.URLParam(r, "name"))
-	res = append(res, chi.URLParam(r, "value"))
-
-	if res == nil {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-	er, an := str.AddStoredData(res)
-	if !er {
-		w.WriteHeader(an)
-		return
-	} else {
-		w.WriteHeader(200)
-	}
-}
-
-// GetMetric должен возвращать текущее значение запрашиваемой метрики
-// в текстовом виде по запросу GET
-// http://<АДРЕС_СЕРВЕРА>/value/<ТИП_МЕТРИКИ>/<ИМЯ_МЕТРИКИ>
-func GetMetric(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/plain")
-	typeM := chi.URLParam(r, "type")
-	nameM := chi.URLParam(r, "name")
-	if typeM != "gauge" && typeM != "counter" {
-		w.WriteHeader(http.StatusNotFound)
-		_, err := w.Write([]byte("Нет такого типа метрики"))
-		if err != nil {
-			return
-		}
-		return
-	}
-
-	res, status := str.GetStoredDataByName(typeM, nameM)
-
-	if status != 200 {
-		w.WriteHeader(status)
-		return
-	}
-
-	_, err := w.Write([]byte(res))
-	if err != nil {
-		log.Error("Ошибка в Write", err)
-		return
-	}
-}
-
-// GetJSONMetric должен возвращать текущее значение запрашиваемой метрики
-// в текстовом виде по запросу GET
-// http://<АДРЕС_СЕРВЕРА>/value/{JSON}
-func GetJSONMetric(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	var m data.Metrics
-	err := json.NewDecoder(r.Body).Decode(&m)
-	if err != nil {
-		return
-	}
-	log.Info(m.ID, m.MType)
-	typeM := m.MType
-	nameM := m.ID
-	if typeM != "gauge" && typeM != "counter" {
-		w.WriteHeader(http.StatusNotFound)
-		_, err := w.Write([]byte("Нет такого типа метрики"))
-		if err != nil {
-			log.Error(err)
-			return
-		}
-		return
-	}
-
-	res, status := str.GetStoredDataByParamToJSON(typeM, nameM)
-	if status != 200 {
-		w.WriteHeader(status)
-		return
-	}
-	log.Println(string(res))
-	_, err = w.Write(res)
-	if err != nil {
-		log.Error("Ошибка в Write", err)
-		return
-	}
-}
-
-// var OFile *tools.OutFile
-
 // SaveLog is a function to save log to a file
-func SaveLog(f outFile) error {
-	// log.Info("Start function SaveLog")
-	sdi := str.StoredDataToJSON()
+func SaveLog(f outFile, ms *storage.StoredMem) error {
+	var s Storage = storage.NewStoredData(ms)
+	sdi := s.GetDataToJSON()
 	log.Info("sdi", sdi)
 	for _, v := range sdi {
 		marshal, err := easyjson.Marshal(v)
-		// log.Info("marshal: ", string(marshal))
 		marshal = append(marshal, '\n')
 		if err != nil {
 			return err
@@ -227,33 +152,299 @@ func SaveLog(f outFile) error {
 	return nil
 }
 
-func ReadLogFile(cfg config) error {
+func ReadLogFile(cfg config, ms *storage.StoredMem) error {
 	var val string
-	log.Info("cfg.LogFile", cfg.GetStoreFile())
+	log.Info("cfg.LogFile: ", cfg.GetStoreFile())
 	fo, err := os.Open(cfg.GetStoreFile())
 	if err != nil {
-		log.Error(err)
-		return err
+		// Нет файла - создаем
+		log.Info("Нет файла - создаем")
+		_, err := tools.OpenWriteToFile(cfg.GetStoreFile(), cfg.GetStoreInterval())
+		if err != nil {
+			log.Error(err)
+			return err
+		}
 	}
 	defer fo.Close()
 
 	scanner := bufio.NewScanner(fo)
 	for scanner.Scan() {
-		var m data.Metrics
+		var (
+			m *storage.Metrics
+			s Storage
+		)
+
+		s = storage.NewStoredData(ms)
 		err := json.Unmarshal([]byte(scanner.Text()), &m)
 		if err != nil {
 			log.Error(err)
 			return err
 		}
-		if m.MType == "gauge" {
-			val = strconv.FormatFloat(*m.Value, 'f', -1, 64)
-		} else if m.MType == "counter" {
-			val = strconv.FormatInt(*m.Delta, 10)
-		} else {
+		switch {
+		case m.MType == env.MetricGaugeType:
+			val = strconv.FormatFloat(*m.Value, 'f', -1, env.BitSize)
+		case m.MType == env.MetricCounterType:
+			val = strconv.FormatInt(*m.Delta, env.Base)
+		default:
 			log.Error("Нет такого типа метрики")
 			return err
 		}
-		str.AddStoredData([]string{m.MType, m.ID, val})
+		s.AddNewItem([]string{m.MType, m.ID, val})
 	}
 	return nil
+}
+
+func StoreMetricsFromJSON(h http.Handler, cfg config, db *sql.DB, ms *storage.StoredMem, storeTO string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		var (
+			m      storage.Metrics
+			status int
+			res    []byte
+			s      Storage
+		)
+		log.Info("storeTO: ", storeTO)
+		switch storeTO {
+		case "file":
+			s = storage.NewStoredData(ms)
+		case saveToDB:
+			s = storage.NewDBStoreData(db)
+		}
+
+		err := easyjson.UnmarshalFromReader(r.Body, &m)
+		if err != nil {
+			log.Error("Ошибка в Unmarshall: ", err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		if m.Hash != "" {
+			if !checkHash(cfg, m) {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+		}
+
+		status, res, err = s.StoreTo(m)
+		if err != nil {
+			w.WriteHeader(status)
+			_, err = w.Write(res)
+			if err != nil {
+				log.Error("Ошибка в Write", err)
+				return
+			}
+			log.Error(err)
+			return
+		} else {
+			w.WriteHeader(status)
+			_, err = w.Write(res)
+			if err != nil {
+				log.Error("Ошибка в Write", err)
+				return
+			}
+		}
+		h.ServeHTTP(w, r)
+	}
+}
+
+func GetMetricsFromJSON(h http.Handler, cfg config, db *sql.DB, ms *storage.StoredMem, storeTO string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		var (
+			m      storage.Metrics
+			res    []byte
+			status int
+			s      Storage
+		)
+
+		switch storeTO {
+		case saveToFile:
+			s = storage.NewStoredData(ms)
+		case saveToDB:
+			s = storage.NewDBStoreData(db)
+		}
+
+		err := json.NewDecoder(r.Body).Decode(&m)
+		if err != nil {
+			log.Error("Ошибка в Unmarshall", err)
+			return
+		}
+		typeM := m.MType
+		if typeM != env.MetricGaugeType && typeM != env.MetricCounterType {
+			w.WriteHeader(http.StatusNotFound)
+			_, err = w.Write([]byte("Нет такого типа метрики"))
+			if err != nil {
+				log.Error(err)
+				return
+			}
+			return
+		}
+
+		res, status = s.GetStoredDataByParamToJSON(m, cfg.GetKey())
+
+		if status != http.StatusOK {
+			w.WriteHeader(status)
+			return
+		}
+		log.Info(string(res))
+		_, err = w.Write(res)
+		if err != nil {
+			log.Error("Ошибка в Write", err)
+			return
+		}
+
+		h.ServeHTTP(w, r)
+	}
+}
+
+func GetMetrics(h http.Handler, db *sql.DB, ms *storage.StoredMem, storeTO string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+
+		typeM := chi.URLParam(r, "type")
+		nameM := chi.URLParam(r, "name")
+		if typeM != env.MetricGaugeType && typeM != env.MetricCounterType {
+			w.WriteHeader(http.StatusNotFound)
+			_, err := w.Write([]byte("Нет такого типа метрики"))
+			if err != nil {
+				return
+			}
+			return
+		}
+
+		var (
+			res    string
+			status int
+			s      Storage
+		)
+
+		switch storeTO {
+		case saveToFile:
+			s = storage.NewStoredData(ms)
+		case saveToDB:
+			s = storage.NewDBStoreData(db)
+		}
+
+		res, status = s.GetStoredDataByName(typeM, nameM)
+
+		if status != http.StatusOK {
+			w.WriteHeader(status)
+			return
+		}
+
+		_, err := w.Write([]byte(res))
+		if err != nil {
+			log.Error("Ошибка в Write", err)
+			return
+		}
+		h.ServeHTTP(w, r)
+	}
+}
+
+func StoreMetrics(h http.Handler, db *sql.DB, ms *storage.StoredMem, storeTO string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		var (
+			res []string
+			er  bool
+			an  int
+			s   Storage
+		)
+
+		switch storeTO {
+		case saveToFile:
+			s = storage.NewStoredData(ms)
+		case saveToDB:
+			s = storage.NewDBStoreData(db)
+		}
+		res = append(res,
+			chi.URLParam(r, "type"),
+			chi.URLParam(r, "name"),
+			chi.URLParam(r, "value"),
+		)
+
+		if res == nil {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		er, an = s.AddNewItem(res)
+
+		if !er {
+			w.WriteHeader(an)
+			return
+		} else {
+			w.WriteHeader(http.StatusOK)
+		}
+		h.ServeHTTP(w, r)
+	}
+}
+
+func MassStoreMetrics(h http.Handler, cfg config, db *sql.DB, ms *storage.StoredMem, storeTO string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			log.Error("Ошибка в ReadAll", err)
+			return
+		}
+		log.Info("BODY: ", string(body))
+
+		var (
+			metrics []storage.Metrics
+			status  int
+			res     []byte
+			s       Storage
+		)
+
+		switch storeTO {
+		case saveToFile:
+			s = storage.NewStoredData(ms)
+		case saveToDB:
+			s = storage.NewDBStoreData(db)
+		}
+
+		err = json.Unmarshal(body, &metrics)
+		if err != nil {
+			log.Error("Ошибка в Unmarshal 1 ", err)
+			return
+		}
+		if metrics == nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		for _, m := range metrics {
+			if m.Hash != "" {
+				if !checkHash(cfg, m) {
+					w.WriteHeader(http.StatusBadRequest)
+					return
+				}
+			}
+
+			status, res, err = s.StoreTo(m)
+			if err != nil {
+				w.WriteHeader(status)
+				_, err = w.Write(res)
+				if err != nil {
+					log.Error("Ошибка в Write", err)
+					return
+				}
+				log.Error(err)
+				return
+			} else {
+				w.WriteHeader(status)
+				_, err = w.Write(res)
+				if err != nil {
+					log.Error("Ошибка в Write", err)
+					return
+				}
+			}
+		}
+		h.ServeHTTP(w, r)
+	}
+}
+
+// Plug заглушка
+func Plug(_ http.ResponseWriter, _ *http.Request) {
 }

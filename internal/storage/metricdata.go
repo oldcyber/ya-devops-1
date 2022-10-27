@@ -1,4 +1,4 @@
-package data
+package storage
 
 import (
 	"crypto/rand"
@@ -9,34 +9,28 @@ import (
 	"sync"
 )
 
-//type MetricWork interface {
-//	AddMetric(name string, value gauge)
-//	GetMetrics() map[string]gauge
-//	Count() counter
-//	IncCounter() counter
-//}
-
 type (
 	gauge   float64
-	counter int64
+	Counter int64
 )
 
-type metricStore struct {
+type MetricStore struct {
 	data map[string]gauge
 	mtx  sync.RWMutex
 }
 
-func NewMetricStore() *metricStore {
-	return &metricStore{}
+func NewMetricStore() *MetricStore {
+	return &MetricStore{}
 }
 
-func (ms *metricStore) GetMetrics() map[string]gauge {
+func (ms *MetricStore) GetMetrics() map[string]gauge {
 	ms.mtx.RLock()
 	defer ms.mtx.RUnlock()
+
 	return ms.data
 }
 
-func (ms *metricStore) AddMetrics() {
+func (ms *MetricStore) AddMetrics() {
 	ms.mtx.RLock()
 	defer ms.mtx.RUnlock()
 
