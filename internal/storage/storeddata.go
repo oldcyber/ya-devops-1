@@ -64,7 +64,6 @@ func (sd *StoredData) StoreTo(m Metrics) (code int, re []byte, er error) {
 			dvalue = *m.Delta
 		}
 		tt := sd.s.data[m.ID].counter
-		log.Info("Значение счетчика: ", tt)
 		dvalue += tt
 		sd.s.data[m.ID] = StoredType{counter: dvalue, stype: m.MType}
 		out = Metrics{ID: m.ID, MType: m.MType, Delta: &dvalue, Hash: m.Hash}
@@ -79,7 +78,6 @@ func (sd *StoredData) StoreTo(m Metrics) (code int, re []byte, er error) {
 }
 
 func (sd *StoredData) AddNewItem(res []string) (status bool, code int) {
-	log.Info("Начинаем запись данных ", len(res))
 	if sd.s.data == nil {
 		sd.s.data = map[string]StoredType{}
 	}
@@ -93,7 +91,6 @@ func (sd *StoredData) AddNewItem(res []string) (status bool, code int) {
 		return false, StatusNotImplemented
 	}
 
-	log.Info("Проверяем тип метрики: ", res[0], " имя метрики: ", res[1], " значение: ", res[2])
 	switch res[0] {
 	case env.MetricGaugeType:
 		g, err := strconv.ParseFloat(res[2], env.BitSize)
@@ -129,7 +126,6 @@ func (sd *StoredData) GetStoredDataByParamToJSON(m Metrics, key string) (re []by
 
 	for i := range sd.s.data {
 		if i == m.ID {
-			log.Info("Нашли данные по имени ", m.ID, " которые совпадают с записью ", i)
 			if m.MType == env.MetricGaugeType {
 				te := sd.s.data[i].gauge
 				hash := CountHash(key, env.MetricGaugeType, m.ID, te, 0)
@@ -140,7 +136,6 @@ func (sd *StoredData) GetStoredDataByParamToJSON(m Metrics, key string) (re []by
 				}
 				return result, StatusOK
 			} else if m.MType == env.MetricCounterType {
-				log.Info("Нашли данные тип ", m.MType, " значение ", sd.s.data[i].counter)
 				ce := sd.s.data[i].counter
 				hash := CountHash(key, env.MetricCounterType, m.ID, 0, ce)
 				out = Metrics{MType: env.MetricCounterType, ID: i, Value: nil, Delta: &ce, Hash: hash}

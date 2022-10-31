@@ -24,17 +24,19 @@ func WorkWithMetrics(cfg config) error {
 		timer1.Stop()
 		timer2.Stop()
 	}()
+
 	for {
 		select {
 		case <-timer1.C:
 			c.IncCounter()
-			m.AddMetrics()
+			nm := make(chan float64, 3)
+			go m.GetNewMetrics(nm)
+			m.AddMetrics(nm)
 		case <-timer2.C:
 			r := make(map[string]float64)
 			for key, val := range m.GetMetrics() {
 				r[key] = float64(val)
 			}
-
 			sendJSONGaugeMetrics(r, cfg)
 			sendJSONCounterMetrics(int64(c.Count()), cfg)
 			sendBulkJSONMetrics(r, cfg)

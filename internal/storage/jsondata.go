@@ -9,7 +9,6 @@ import (
 
 	"github.com/mailru/easyjson"
 	"github.com/oldcyber/ya-devops-1/internal/env"
-	log "github.com/sirupsen/logrus"
 )
 
 type Metrics struct {
@@ -27,10 +26,8 @@ func (m *Metrics) MarshalGaugeMetrics(k, key string, v float64) []byte {
 	if key != "" {
 		// SHA256 hash
 		h := hmac.New(sha256.New, []byte(key))
-		log.Infof("converting: %s:gauge:%f", k, v)
 		fmt.Fprintf(h, "%s:gauge:%f", k, v)
 		m.Hash = fmt.Sprintf("%x", h.Sum(nil))
-		log.Info("Hash gauge: ", m.Hash)
 	}
 	rawBytes, err := easyjson.Marshal(m)
 	if err != nil {
@@ -46,10 +43,8 @@ func (m *Metrics) MarshalCounterMetrics(c int64, key string) []byte {
 	if key != "" {
 		// SHA256 hash
 		h := hmac.New(sha256.New, []byte(key))
-		log.Infof("converting:%s:counter:%d", m.ID, c)
 		fmt.Fprintf(h, "%s:counter:%d", m.ID, c)
 		m.Hash = fmt.Sprintf("%x", h.Sum(nil))
-		log.Info("Hash counter: ", m.Hash)
 	}
 	rawBytes, err := easyjson.Marshal(m)
 	if err != nil {
