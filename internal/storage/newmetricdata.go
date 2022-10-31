@@ -13,25 +13,22 @@ func (ms *MetricStore) GetNewMetrics(ch chan<- float64) {
 	if err != nil {
 		log.Error(err)
 	}
-	c, _ := cpu.Counts(true)
-	log.Info("CPU: ", c)
-	ci, _ := cpu.Info()
-	log.Info("CPU Info: ", ci)
-	cu, _ := cpu.Percent(time.Second, true)
+	cu, err := cpu.Percent(time.Second, false)
+	if err != nil {
+		log.Error("cpu err: ", err)
+	}
 	tm := v.Total
 	log.Info("Total Memory: ", tm)
 	ch <- float64(tm)
 	fm := v.Free
 	log.Info("Free Memory: ", fm)
 	ch <- float64(fm)
-	log.Info("CPU Util: ", cu)
 	if cu != nil {
-		for _, i := range cu {
-			ch <- i
-		}
+		log.Info("CPU Util: ", cu)
+		ch <- cu[0]
 	} else {
+		log.Info("CPU Util: ", 0)
 		ch <- 0
 	}
-
 	close(ch)
 }

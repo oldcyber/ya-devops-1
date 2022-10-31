@@ -27,10 +27,4 @@ func CalcHash(cfg config, m storage.Metrics) string {
 func checkHash(cfg config, m storage.Metrics) bool {
 	hash := CalcHash(cfg, m)
 	return hmac.Equal([]byte(m.Hash), []byte(hash))
-	//if !hmac.Equal([]byte(m.Hash), []byte(hash)) {
-	//	// log.Info("Hash is not equal")
-	//	return false
-	//}
-	//// log.Info("Hash is equal")
-	//return true
 }

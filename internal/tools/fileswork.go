@@ -49,7 +49,6 @@ func (of *OutFile) WriteToFile(data []byte) error {
 		log.Error("Error writing to file: ", err)
 		return err
 	}
-	// log.Info("Записали в файл:", string(data))
 	return nil
 }
 

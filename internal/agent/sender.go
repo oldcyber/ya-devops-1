@@ -30,7 +30,6 @@ func sendJSONGaugeMetrics(m map[string]float64, cfg config) {
 				log.Error("Ошибка при отправке данных в сервис метрик: ", err)
 			} else {
 				defer resp.Body.Close()
-				// log.Info("Отправлено на сервер:", string(j), "Статус-код ", resp.Status)
 			}
 		}()
 	}
@@ -57,7 +56,6 @@ func sendJSONCounterMetrics(c int64, cfg config) {
 			log.Error("Ошибка при отправке данных в сервис метрик: ", err)
 		} else {
 			defer resp.Body.Close()
-			// log.Info("Отправлено на сервер:", string(j), "Статус-код ", resp.Status)
 		}
 	}()
 	log.Info("Отправлено на сервер: ", c, " метрик")
@@ -83,7 +81,6 @@ func sendBulkJSONMetrics(myMap map[string]float64, cfg config) {
 			log.Error("Ошибка при отправке данных в сервис метрик: ", err)
 		} else {
 			defer resp.Body.Close()
-			// log.Info("Отправлено на сервер:", string(j), "Статус-код ", resp.Status)
 		}
 	}()
 	log.Info("Отправлено на сервер: ", len(myMap), " метрик")

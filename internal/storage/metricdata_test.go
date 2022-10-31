@@ -11,9 +11,11 @@ func TestMetricStore_AddMetrics(t *testing.T) {
 	tests := []struct {
 		name   string
 		fields fields
+		arg    chan float64
 	}{
 		{
 			name: "test",
+			arg:  make(chan float64, 3),
 			fields: fields{
 				data: map[string]gauge{},
 			},
@@ -24,7 +26,8 @@ func TestMetricStore_AddMetrics(t *testing.T) {
 			ms := &MetricStore{
 				data: tt.fields.data,
 			}
-			ms.AddMetrics()
+			go ms.GetNewMetrics(tt.arg)
+			ms.AddMetrics(tt.arg)
 		})
 	}
 }

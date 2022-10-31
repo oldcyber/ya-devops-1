@@ -2,11 +2,12 @@ package storage
 
 import (
 	"crypto/rand"
-	"log"
 	"math"
 	"math/big"
 	"runtime"
 	"sync"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type (
@@ -31,10 +32,6 @@ func (ms *MetricStore) GetMetrics() map[string]gauge {
 }
 
 func (ms *MetricStore) AddMetrics(nm chan float64) {
-	// fmt.Println("1 ", <-nm)
-	// fmt.Println("2 ", <-nm)
-	// fmt.Println("3 ", <-nm)
-
 	ms.mtx.RLock()
 	defer ms.mtx.RUnlock()
 
@@ -72,12 +69,10 @@ func (ms *MetricStore) AddMetrics(nm chan float64) {
 	ms.data["Sys"] = gauge(rtm.Sys)
 	ms.data["TotalAlloc"] = gauge(rtm.TotalAlloc)
 	ms.data["RandomValue"] = gauge(SetRandomValue())
+	// Новые метрики
 	ms.data["TotalMemory"] = gauge(<-nm)
 	ms.data["FreeMemory"] = gauge(<-nm)
 	ms.data["CPUutilization1"] = gauge(<-nm)
-	// ms.data["TotalMemory"] = gauge(100)
-	// ms.data["FreeMemory"] = gauge(100)
-	// ms.data["CPUutilization1"] = gauge(100)
 }
 
 // SetRandomValue Генерируем случайное число
