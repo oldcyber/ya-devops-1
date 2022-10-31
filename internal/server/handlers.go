@@ -136,7 +136,7 @@ func GzipMiddleware(next http.Handler) http.Handler {
 func SaveLog(f outFile, ms *storage.StoredMem) error {
 	var s Storage = storage.NewStoredData(ms)
 	sdi := s.GetDataToJSON()
-	log.Info("sdi", sdi)
+	// log.Info("sdi", sdi)
 	for _, v := range sdi {
 		marshal, err := easyjson.Marshal(v)
 		marshal = append(marshal, '\n')
@@ -154,7 +154,7 @@ func SaveLog(f outFile, ms *storage.StoredMem) error {
 
 func ReadLogFile(cfg config, ms *storage.StoredMem) error {
 	var val string
-	log.Info("cfg.LogFile: ", cfg.GetStoreFile())
+	// log.Info("cfg.LogFile: ", cfg.GetStoreFile())
 	fo, err := os.Open(cfg.GetStoreFile())
 	if err != nil {
 		// Нет файла - создаем
@@ -287,7 +287,7 @@ func GetMetricsFromJSON(h http.Handler, cfg config, db *sql.DB, ms *storage.Stor
 			w.WriteHeader(status)
 			return
 		}
-		log.Info(string(res))
+		// log.Info(string(res))
 		_, err = w.Write(res)
 		if err != nil {
 			log.Error("Ошибка в Write", err)
@@ -388,7 +388,7 @@ func MassStoreMetrics(h http.Handler, cfg config, db *sql.DB, ms *storage.Stored
 			log.Error("Ошибка в ReadAll", err)
 			return
 		}
-		log.Info("BODY: ", string(body))
+		// log.Info("BODY: ", string(body))
 
 		var (
 			metrics []storage.Metrics

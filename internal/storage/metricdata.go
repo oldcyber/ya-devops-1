@@ -30,11 +30,10 @@ func (ms *MetricStore) GetMetrics() map[string]gauge {
 	return ms.data
 }
 
-func (ms *MetricStore) AddMetrics() {
-	var newMetrics []gauge
-	ch := make(chan []gauge)
-	go GetNewMetrics(ch)
-	newMetrics = append(newMetrics, <-ch...)
+func (ms *MetricStore) AddMetrics(nm chan float64) {
+	// fmt.Println("1 ", <-nm)
+	// fmt.Println("2 ", <-nm)
+	// fmt.Println("3 ", <-nm)
 
 	ms.mtx.RLock()
 	defer ms.mtx.RUnlock()
@@ -63,7 +62,7 @@ func (ms *MetricStore) AddMetrics() {
 	ms.data["MSpanInuse"] = gauge(rtm.MSpanInuse)
 	ms.data["MSpanSys"] = gauge(rtm.MSpanSys)
 	ms.data["Mallocs"] = gauge(rtm.Mallocs)
-	ms.data["ШтскуьутеNextGC"] = gauge(rtm.NextGC)
+	ms.data["NextGC"] = gauge(rtm.NextGC)
 	ms.data["NumForcedGC"] = gauge(rtm.NumForcedGC)
 	ms.data["NumGC"] = gauge(rtm.NumGC)
 	ms.data["OtherSys"] = gauge(rtm.OtherSys)
@@ -73,9 +72,12 @@ func (ms *MetricStore) AddMetrics() {
 	ms.data["Sys"] = gauge(rtm.Sys)
 	ms.data["TotalAlloc"] = gauge(rtm.TotalAlloc)
 	ms.data["RandomValue"] = gauge(SetRandomValue())
-	ms.data["TotalMemory"] = newMetrics[0]
-	ms.data["FreeMemory"] = newMetrics[1]
-	ms.data["CPUutilization1"] = newMetrics[2]
+	ms.data["TotalMemory"] = gauge(<-nm)
+	ms.data["FreeMemory"] = gauge(<-nm)
+	ms.data["CPUutilization1"] = gauge(<-nm)
+	// ms.data["TotalMemory"] = gauge(100)
+	// ms.data["FreeMemory"] = gauge(100)
+	// ms.data["CPUutilization1"] = gauge(100)
 }
 
 // SetRandomValue Генерируем случайное число
